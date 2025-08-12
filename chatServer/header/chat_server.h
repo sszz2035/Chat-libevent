@@ -13,6 +13,8 @@
 
 #define IP "192.168.200.130"
 #define PORT 8888
+#define GROUP_MAX_SZ 1024
+
 
 class ChatServer
 {

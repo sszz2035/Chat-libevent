@@ -23,6 +23,7 @@ public:
     /**
      * @brief 获取数据库中的群信息
      * @param 用于接收查询结果的字符串的数组
+     * @note g数组中的字符串格式形如:groupname|membername1|membername2......
      * @return 查询结果的条数
     */  
     int data_base_get_group_info(std::string* g);

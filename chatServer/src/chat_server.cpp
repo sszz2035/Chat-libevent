@@ -14,7 +14,7 @@ ChatServer::ChatServer()
 ChatServer::~ChatServer()
 {
     if(db)  delete db;
-    
+    if(info) delete info;
 }
 
 /*创建监听对象*/
@@ -66,9 +66,13 @@ void ChatServer::server_update_group_info()
         exit(1);
     }
     //获取群列表信息
-    std::string groupinfo[1024];//最多1024个群
+    std::string groupinfo[GROUP_MAX_SZ];//最多1024个群
     int num=db->data_base_get_group_info(groupinfo);
-
+    
+    //更新info中的群信息
+    info->list_update_group(groupinfo,num);
+    info->list_print_group();
+    
     //断开数据库
     db->database_disconnect();
 }
