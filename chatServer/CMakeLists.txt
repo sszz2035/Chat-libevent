@@ -1,12 +1,41 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.13)
 
 project(chatServer)
 
-add_executable(${PROJECT_NAME} src/main.cpp src/chat_server.cpp)
+# 设置启用C++11
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+# 定义可执行文件
+add_executable(${PROJECT_NAME} 
+src/main.cpp 
+src/chat_server.cpp
+src/chat_info.cpp 
+src/data_base.cpp)
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/header)
+# pkg-config 查找MySQL库
+# find_package(MySQL REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PC_MYSQL REQUIRED mysqlclient)
 
-target_link_libraries(${PROJECT_NAME} event)
+# 绑定头文件目录
+target_include_directories(${PROJECT_NAME} PRIVATE 
+${PROJECT_SOURCE_DIR}/header
+${PC_MYSQL_INCLUDE_DIRS})
 
+# message(STATUS "MySQL Found: ${PC_MYSQL_FOUND}")
+# message(STATUS "MySQL Include Dirs: ${PC_MYSQL_INCLUDE_DIRS}")
+# message(STATUS "MySQL Libraries: ${PC_MYSQL_LIBRARIES}")
+
+#设置库链接目录
+target_link_directories(${PROJECT_NAME} PRIVATE
+    ${PC_MYSQL_LIBRARY_DIRS}
+)
+
+# 链接库
+target_link_libraries(${PROJECT_NAME} 
+    PRIVATE
+    event 
+    mysqlclient
+) 
