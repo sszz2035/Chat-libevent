@@ -7,8 +7,16 @@ ChatServer::ChatServer()
     db=new DataBase();
     //初始化数据结构对象
     info=new ChatInfo();
-    //初始化群消息
+    //初始化群消息:把群信息从数据库读出来，放入map
     server_update_group_info();
+    //初始化线程池
+    thread_num=POOL_MAX_THREAD_SZ;
+    cur_thread=0;
+    pool=new ChatThread[thread_num];
+    for(int i=0;i<thread_num;i++)
+    {
+        pool[i].start(info,db);
+    }
 }
 
 ChatServer::~ChatServer()

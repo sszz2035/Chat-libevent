@@ -10,12 +10,13 @@
 #include<stdlib.h>
 #include"data_base.h"
 #include"chat_info.h"
-
+#include"chat_thread.h"
 #define IP "192.168.200.130"
 #define PORT 8888
+//最大群组个数
 #define GROUP_MAX_SZ 1024
-
-
+//线程池中最大线程数量
+#define POOL_MAX_THREAD_SZ 3
 class ChatServer
 {
 public:
@@ -41,6 +42,12 @@ private:
     DataBase* db;
     //数据结构对象
     ChatInfo* info;
+    //线程池对象
+    ChatThread* pool;
+    //当前线程数量
+    int thread_num;
+    //当前的线程
+    int cur_thread;
 
     /**
      * @brief 监听器的回调函数，在新连接被建立时调用
