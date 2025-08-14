@@ -17,6 +17,7 @@
 #define GROUP_MAX_SZ 1024
 //线程池中最大线程数量
 #define POOL_MAX_THREAD_SZ 3
+
 class ChatServer
 {
 public:
@@ -35,6 +36,13 @@ public:
      */
     void listen(const char* ip,int port);
 
+    /**
+     * @brief 给客户端分配一个socket事件,用线程池中的一个线程来接待它 
+     * @param fd 代表文件描述符
+     * @details 接待客户端的线程由cur_thread决定
+    */
+    void server_alloc_event(int fd);
+    
 private:
     //事件集合对象
     struct event_base* base;

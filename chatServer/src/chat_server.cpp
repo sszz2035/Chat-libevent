@@ -34,7 +34,7 @@ void ChatServer::listen(const char* ip,int port)
     client_info.sin_addr.s_addr=inet_addr(ip);
     client_info.sin_port=htons(port);
     //进入监听状态
-    struct evconnlistener* listener=evconnlistener_new_bind(base,listener_cb,NULL,LEV_OPT_CLOSE_ON_FREE
+    struct evconnlistener* listener=evconnlistener_new_bind(base,listener_cb,this,LEV_OPT_CLOSE_ON_FREE| LEV_OPT_REUSEABLE
     ,5,(struct sockaddr*)&client_info,sizeof(client_info));
 
     if(listener==NULL)
@@ -56,12 +56,13 @@ void ChatServer::listener_cb(struct evconnlistener* listener,
 evutil_socket_t sock,struct sockaddr* addr,int len,void* ptr)
 {
     struct sockaddr_in* client_info=reinterpret_cast<sockaddr_in*>(addr);
-
+    ChatServer* ser=(ChatServer*)ptr;
     //打印连接消息
-    std::cout<<"[connected] "<<"Ip:"<<inet_ntoa(client_info->sin_addr)<<" Port: "<<ntohs(client_info->sin_port)<<std::endl;
-    //处理连接
-
+    std::cout<<"[connected] "
+    <<"Ip:"<<inet_ntoa(client_info->sin_addr)
+    <<" Port: "<<ntohs(client_info->sin_port)<<std::endl;
     //将连接添加到线程池
+    ser->server_alloc_event(sock);
 }
 
 //更新群消息列表
@@ -83,4 +84,23 @@ void ChatServer::server_update_group_info()
     
     //断开数据库
     db->database_disconnect();
+}
+
+//将连接添加到线程池
+void ChatServer::server_alloc_event(int fd)
+{
+    //要操作的线程
+    struct event_base *t_base= pool[cur_thread].thread_get_base();
+    cur_thread=(cur_thread+1)%thread_num;
+    // 创建套接字缓冲事件
+    struct bufferevent* evt=bufferevent_socket_new(t_base,fd,BEV_OPT_CLOSE_ON_FREE);
+    if(evt==NULL)
+    {
+        perror("bufferevent_socket_new error");
+        return ;
+    }
+    //设置回调函数
+    bufferevent_setcb(evt,ChatThread::thread_readcb,NULL,ChatThread::thread_event_cb,NULL);
+    //启用读事件
+    bufferevent_enable(evt,EV_READ);
 }

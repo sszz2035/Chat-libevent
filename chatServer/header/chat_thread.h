@@ -4,6 +4,7 @@
 #include "data_base.h"
 #include <thread>
 #include <event.h>
+#include <cstring>
 class ChatThread
 {
 public:
@@ -32,6 +33,27 @@ public:
      * @return 返回线程id
      */
     std::thread::id get_id();
+
+    /**
+     * @brief 获取事件集合
+     * @return 返回事件集合
+    */
+    struct event_base *thread_get_base();
+
+    /**
+     * @brief 处理读事件的回调函数
+     * @param bev 对应事件 
+     * @param ctx 传给回调函数的参数
+    */
+    static void thread_readcb(struct bufferevent *bev, void *ctx);
+
+    /**
+     * @brief 处理异常事件的回调函数
+     * @param bev 对应事件
+     * @param events 异常事件
+     * @param ctx 传给回调函数的参数
+    */
+    static void thread_event_cb(struct bufferevent *bev, short events, void *ctx);
 
 private:
     // 线程

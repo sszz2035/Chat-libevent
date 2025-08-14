@@ -60,3 +60,24 @@ std::thread::id ChatThread::get_id()
 {
     return _id;
 }
+
+struct event_base *ChatThread::thread_get_base()
+{
+    return base;
+}
+
+
+void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
+{   
+    char buf[1024];
+    memset(buf,0,sizeof(buf));
+    //读取数据
+    bufferevent_read(bev,buf,sizeof(buf));
+    //打印数据
+    std::cout<<buf<<std::endl;
+}   
+
+void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
+{
+    
+}
