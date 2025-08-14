@@ -32,7 +32,7 @@ public:
      * @brief 获取线程号
      * @return 返回线程id
      */
-    std::thread::id get_id();
+    std::thread::id thread_get_id();
 
     /**
      * @brief 获取事件集合
@@ -76,5 +76,12 @@ private:
      * @brief 定时器的回调函数
      */
     static void timeout_cb(evutil_socket_t fd, short event, void *arg);
+
+    /**
+     * @brief 读取数据的函数,解决TCP分包问题
+     * @return 成功读取返回true 否则返回false
+     * @note 在thread_readcb中被调用
+    */
+    bool thread_read_data(struct bufferevent* bev,char *s);
 };
 #endif

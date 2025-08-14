@@ -56,7 +56,7 @@ void ChatThread::timeout_cb(evutil_socket_t fd,short event,void* arg)
     // std::cout<<"thread"<<t->get_id()<<" is listening"<<std::endl;
 }
 
-std::thread::id ChatThread::get_id()
+std::thread::id ChatThread::thread_get_id()
 {
     return _id;
 }
@@ -69,15 +69,42 @@ struct event_base *ChatThread::thread_get_base()
 
 void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
 {   
+    ChatThread* t=(ChatThread*)ctx;
     char buf[1024];
     memset(buf,0,sizeof(buf));
-    //读取数据
-    bufferevent_read(bev,buf,sizeof(buf));
-    //打印数据
-    std::cout<<buf<<std::endl;
+    if(!t->thread_read_data(bev,buf))
+    {
+        perror("thread_read_data error");
+        return;
+    }
+    std::cout<<"--thread "<<t->thread_get_id()<<" receive data "<<buf<<std::endl;
 }   
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
 {
-    
+
+}
+
+bool ChatThread::thread_read_data(struct bufferevent* bev,char *s)
+{
+    //要读取的长度
+    int sz=0;
+    //先读取长度，放入sz中
+    if(bufferevent_read(bev,&sz,4)!=4)
+    {
+        perror("bufferevent_read error");
+        return false;
+    }
+    size_t count=0;
+    char buf[1024];
+    while(1)
+    {
+        //count加上读取到的字符个数
+        count+=bufferevent_read(bev,buf,1024);
+        strcat(s,buf);
+        memset(buf,0,sizeof(buf));
+        //读取到的字符个数>=要读取的字符个数
+        if(count>=sz)   break;
+    }
+    return true;
 }
