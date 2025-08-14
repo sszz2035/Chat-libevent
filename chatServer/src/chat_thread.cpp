@@ -78,10 +78,26 @@ void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
         return;
     }
     std::cout<<"--thread "<<t->thread_get_id()<<" receive data "<<buf<<std::endl;
+    //解析json数据
+    Json::Reader reader;//json 解析对象
+    Json::Value  val; //json存储的容器 类似于map
+
+    if(!reader.parse(buf,val))
+    {
+        perror("data is not json");
+        return;
+    }
+
+    if(val["cmd"]=="register")
+    {
+        // std::cout<<"客户端注册"<<std::endl;
+        return;
+    }
+
 }   
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
-{
+{   
 
 }
 

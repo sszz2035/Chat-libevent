@@ -40,4 +40,5 @@ target_link_libraries(${PROJECT_NAME}
     event 
     mysqlclient
     pthread
+    jsoncpp
 ) 

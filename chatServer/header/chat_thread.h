@@ -5,6 +5,7 @@
 #include <thread>
 #include <event.h>
 #include <cstring>
+#include<jsoncpp/json/json.h>
 class ChatThread
 {
 public:

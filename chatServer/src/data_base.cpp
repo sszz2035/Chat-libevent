@@ -71,3 +71,32 @@ int DataBase::data_base_get_group_info(std::string* g)
     return idx;
 }
 
+bool DataBase::database_init_table()
+{
+    //连接数据库
+    if(database_connect()==false)
+    {
+        perror("database_connect error");
+        exit(1);
+    }
+    //初始化数据库  
+    const char* g="CREATE TABLE IF NOT EXISTS chat_group(\
+    groupname VARCHAR(128)\
+    groupowner VARCHAR(128)\
+    groupnumber VARCHAR(4096)\
+    )charset utf8mb4";
+    if(!mysql_query(mysql,g))
+    {
+        perror("mysql_query error");
+        exit(1);
+    }
+    const char* q="CREATE TABLE IF NOT EXISTS chat_user(\
+    username VARCHAR(128)\
+    password VARCHAR(128)\
+    friendlist VARCHAR(4096)\
+    grouplist VARCHAR(4096)\
+    )charset utf8mb4";
+    //断开连接
+    database_disconnect();
+    return true;
+}

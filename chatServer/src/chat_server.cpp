@@ -7,6 +7,12 @@ ChatServer::ChatServer()
     db=new DataBase();
     //初始化数据结构对象
     info=new ChatInfo();
+    //初始化数据表
+    if(!db->database_init_table())
+    {
+        perror("database_init_error");
+        exit(1);
+    }
     //初始化群消息:把群信息从数据库读出来，放入map
     server_update_group_info();
     //初始化线程池

@@ -11,7 +11,7 @@ public:
 
     /**
      * @brief 与数据库建立连接
-     * @return true代表成功连接 false代表连接失败
+     * @return 成功返回true 失败返回false
     */  
     bool database_connect();
     
@@ -19,6 +19,12 @@ public:
      * @brief 与数据库断开连接
     */
     void database_disconnect();
+
+    /**
+     * @brief 初始化数据库
+     * @return 成功返回true 失败返回false
+    */
+    bool database_init_table();
 
     /**
      * @brief 获取数据库中的群信息
