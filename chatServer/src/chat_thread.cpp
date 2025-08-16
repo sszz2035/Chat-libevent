@@ -1,5 +1,5 @@
 #include"chat_thread.h"
-
+#include"log.h"
 ChatThread::ChatThread()
 {
     // 创建事件集合
@@ -32,7 +32,7 @@ void ChatThread::run()
     struct event* timeout=event_new(base,-1,EV_PERSIST,timeout_cb,this);
     if (!timeout) 
     {
-        perror("event_new error");
+        LOG_PERROR("event_new");        
         return;
     }
 
@@ -74,23 +74,25 @@ void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
     memset(buf,0,sizeof(buf));
     if(!t->thread_read_data(bev,buf))
     {
-        perror("thread_read_data error");
+        LOG_PERROR("thread_read_data");        
         return;
     }
     std::cout<<"--thread "<<t->thread_get_id()<<" receive data "<<buf<<std::endl;
+
     //解析json数据
     Json::Reader reader;//json 解析对象
     Json::Value  val; //json存储的容器 类似于map
 
     if(!reader.parse(buf,val))
     {
-        perror("data is not json");
+        LOG_PERROR("parse");        
         return;
     }
-
+    //处理注册事件
     if(val["cmd"]=="register")
     {
         // std::cout<<"客户端注册"<<std::endl;
+        t->thread_register(bev,val);
         return;
     }
 
@@ -108,11 +110,11 @@ bool ChatThread::thread_read_data(struct bufferevent* bev,char *s)
     //先读取长度，放入sz中
     if(bufferevent_read(bev,&sz,4)!=4)
     {
-        perror("bufferevent_read error");
+        LOG_PERROR("bufferevent_read");       
         return false;
     }
     size_t count=0;
-    char buf[1024];
+    char buf[1024]={0};
     while(1)
     {
         //count加上读取到的字符个数
@@ -123,4 +125,53 @@ bool ChatThread::thread_read_data(struct bufferevent* bev,char *s)
         if(count>=sz)   break;
     }
     return true;
+}
+
+void ChatThread::thread_register(struct bufferevent* bev,Json::Value& v)
+{
+    //连接数据库
+    if(db->database_connect()==false)
+    {   
+        LOG_PERROR("database_connect");        
+        return;
+    }
+    //判断用户是否已存在
+
+    //用户已存在
+    if(db->database_user_is_exist(v["username"].asString()))
+    {
+        Json::Value val;
+        val["cmd"]="register_reply";
+        val["result"]="user_exist";
+        //发送回应给客户端
+        thread_write_data(bev,val);
+    }
+
+    //用户不存在
+    else
+    {   
+        //将用户添加到数据库中
+        db->database_insert_user_info(v);
+        //发送回应给客户端        
+        Json::Value val;
+        val["cmd"]="register_reply";
+        val["result"]="success";
+        thread_write_data(bev,val);
+    }
+
+    //断开数据库
+    db->database_disconnect();
+}
+
+void ChatThread::thread_write_data(struct bufferevent* bev,Json::Value& v)
+{
+    //封装json数据为字符串
+    Json::FastWriter writer;
+    std::string val=writer.write(v);
+    int len=val.size();
+    char wbuf[1024]={0};
+    memcpy(wbuf,&len,4);
+    memcpy(wbuf+4,val.c_str(),len);
+    //将数据写入输出缓冲区中
+    bufferevent_write(bev,wbuf,len+4);
 }

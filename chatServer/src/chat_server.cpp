@@ -1,4 +1,5 @@
 #include"chat_server.h"
+#include"log.h"
 ChatServer::ChatServer()
 {
     //初始化事件集合
@@ -10,7 +11,7 @@ ChatServer::ChatServer()
     //初始化数据表
     if(!db->database_init_table())
     {
-        perror("database_init_error");
+        LOG_PERROR("database_init_table");        
         exit(1);
     }
     //初始化群消息:把群信息从数据库读出来，放入map
@@ -45,7 +46,7 @@ void ChatServer::listen(const char* ip,int port)
 
     if(listener==NULL)
     {
-        perror("evconnlistener_new_bind error");
+        LOG_PERROR("evconnlistener_new_bind");        
         exit(1);
     }
 
@@ -77,7 +78,7 @@ void ChatServer::server_update_group_info()
     //连接数据库
     if(db->database_connect()==false)
     {
-        perror("database_connect error");
+        LOG_PERROR("database_connect");        
         exit(1);
     }
     //获取群列表信息
@@ -104,7 +105,7 @@ void ChatServer::server_alloc_event(int fd)
     struct bufferevent* evt=bufferevent_socket_new(t_base,fd,BEV_OPT_CLOSE_ON_FREE);
     if(evt==NULL)
     {
-        perror("bufferevent_socket_new error");
+        LOG_PERROR("bufferevent_socket_new");        
         return ;
     }
     //设置回调函数

@@ -56,6 +56,19 @@ public:
     */
     static void thread_event_cb(struct bufferevent *bev, short events, void *ctx);
 
+    /**
+     * @brief 处理客户端注册事件
+     * @param bev 对应事件
+     * @param v 接收到的Json数据
+    */
+    void thread_register(struct bufferevent* bev,Json::Value& v);
+
+    /**
+     * @brief 写入数据，供客户端接收
+     * @param bev 对应事件
+     * @param v 要写入的数据
+    */
+    void thread_write_data(struct bufferevent* bev,Json::Value& v);
 private:
     // 线程
     std::thread *_thread;

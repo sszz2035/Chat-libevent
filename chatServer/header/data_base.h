@@ -2,6 +2,9 @@
 #define DATABASE_H
 #include<mysql/mysql.h>
 #include<mutex>
+#include<stdio.h>
+#include<iostream>
+#include<jsoncpp/json/json.h>
 //数据库类
 class DataBase
 {
@@ -12,6 +15,7 @@ public:
     /**
      * @brief 与数据库建立连接
      * @return 成功返回true 失败返回false
+     * @note 后续可考虑用连接池优化
     */  
     bool database_connect();
     
@@ -33,6 +37,19 @@ public:
      * @return 查询结果的条数
     */  
     int data_base_get_group_info(std::string* g);
+
+    /**
+     * @brief 判断用户是否存在于数据库中
+     * @param usr 表示用户名
+     * @return 存在返回true 不存在返回false
+    */
+    bool database_user_is_exist(std::string usr);
+
+    /**
+     * @brief 将用户添加到数据库中
+     * @note 对chat_user数据库进行操作
+    */
+   void database_insert_user_info(Json::Value& v);
 
 private:
     MYSQL* mysql;
