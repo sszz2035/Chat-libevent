@@ -66,6 +66,7 @@ private:
 
     /**
      * @brief 初始化群消息，更新群消息列表
+     * @details 把群信息从数据库读出来，放入map
     */
     void server_update_group_info();
 };

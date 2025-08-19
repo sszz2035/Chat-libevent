@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.13)
 
 project(chatServer)
 
-# 设置启用C++11
+# 设置启用C++17
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 定义可执行文件

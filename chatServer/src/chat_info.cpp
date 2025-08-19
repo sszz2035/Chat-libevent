@@ -1,4 +1,5 @@
 #include"chat_info.h"
+#include<algorithm>
 
 ChatInfo::ChatInfo()
 {
@@ -11,6 +12,11 @@ ChatInfo::~ChatInfo()
     if(online_user) delete online_user;
     if(group_info) delete group_info;
 }
+
+// bool User::operator==(const User& other)
+// {
+//     return name==other.name;
+// }
 
 void ChatInfo::list_update_group(std::string* g,int size)
 {
@@ -44,7 +50,9 @@ void ChatInfo::list_update_group(std::string* g,int size)
 }
 
 void ChatInfo::list_print_group()
-{
+{    
+    //上锁
+    std::unique_lock<std::mutex>lock(list_mutex);
     for(auto it=group_info->begin();it!=group_info->end();it++)
     {
         std::cout<<it->first<<" ";
@@ -53,5 +61,31 @@ void ChatInfo::list_print_group()
             std::cout<<*i<<" ";
         }
         std::cout<<std::endl;
+    }
+}
+
+bool ChatInfo::list_update_list(struct bufferevent* bev,Json::Value& v)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(list_mutex);
+    User user={v["username"].asString(),bev};
+    online_user->push_back(user);
+    return true;
+}
+
+struct bufferevent* ChatInfo::list_friend_online(const std::string& user)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(list_mutex);
+    auto it=std::find_if(online_user->begin(),online_user->end(),[user](const User& u)->bool{
+        return user==u.name;
+        });
+    if(it!=online_user->end())
+    {
+        return it->bufevent;
+    }
+    else
+    {
+        return NULL;
     }
 }

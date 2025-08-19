@@ -16,6 +16,7 @@ ChatServer::ChatServer()
     }
     //初始化群消息:把群信息从数据库读出来，放入map
     server_update_group_info();
+    
     //初始化线程池
     thread_num=POOL_MAX_THREAD_SZ;
     cur_thread=0;
@@ -83,7 +84,7 @@ void ChatServer::server_update_group_info()
     }
     //获取群列表信息
     std::string groupinfo[GROUP_MAX_SZ];//最多1024个群
-    int num=db->data_base_get_group_info(groupinfo);
+    int num=db->database_get_group_info(groupinfo);
     
     //更新info中的群信息
     info->list_update_group(groupinfo,num);

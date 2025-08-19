@@ -69,6 +69,13 @@ public:
      * @param v 要写入的数据
     */
     void thread_write_data(struct bufferevent* bev,Json::Value& v);
+
+    /**
+     * @brief 处理客户端登录事件
+     * @param bev 对应事件
+     * @param v 接收到的Json数据
+    */
+    void thread_login(struct bufferevent* bev,Json::Value& v);
 private:
     // 线程
     std::thread *_thread;

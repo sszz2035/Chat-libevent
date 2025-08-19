@@ -93,9 +93,12 @@ void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
     {
         // std::cout<<"客户端注册"<<std::endl;
         t->thread_register(bev,val);
-        return;
     }
-
+    //处理登录事件
+    else if(val["cmd"]=="login")
+    {
+        t->thread_login(bev,val);
+    }
 }   
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
@@ -174,4 +177,93 @@ void ChatThread::thread_write_data(struct bufferevent* bev,Json::Value& v)
     memcpy(wbuf+4,val.c_str(),len);
     //将数据写入输出缓冲区中
     bufferevent_write(bev,wbuf,len+4);
+}
+
+void ChatThread::thread_login(struct bufferevent* bev,Json::Value& v)
+{
+    //连接数据库
+    if(db->database_connect()==false)
+    {
+        LOG_PERROR("database_connect");
+        return; 
+    }
+    std::string loginName=v["username"].asString();
+    //判断登录用户是否存在
+    //用户不存在
+    if(!db->database_user_is_exist(loginName))
+    {
+        Json::Value val;
+        val["cmd"]="login_reply";
+        val["result"]="not_exist";
+        thread_write_data(bev,val);
+        db->database_disconnect();
+        return;
+    }
+    //用户存在，判断密码是否正确
+    //密码不正确
+    if(!db->database_password_correct(v))
+    {
+        Json::Value val;
+        val["cmd"]="login_reply";
+        val["result"]="password_error";
+        thread_write_data(bev,val);
+        db->database_disconnect();
+        return;
+    }
+
+    //读取好友列表与群组列表
+    std::string friendlist,grouplist; 
+    if(!db->database_get_friend_group(v,friendlist,grouplist))
+    {
+        LOG_PERROR("database_get_friend_group");
+        db->database_disconnect();
+        return;
+    }
+    //回复客户端登陆成功
+    Json::Value Val;
+    Val["cmd"]="login_reply";
+    Val["result"]="success";
+    Val["friendlist"]=friendlist;
+    Val["grouplist"]=grouplist;
+    thread_write_data(bev,Val);
+
+    //更新在线用户链表
+    info->list_update_list(bev,v);
+    
+    //发送上线提示给所有好友
+    if(friendlist.empty())  
+    {    
+        db->database_disconnect();
+        return;
+    }
+    //遍历好友列表，给在线的用户发送信息
+    int start=0,idx=friendlist.find('|');
+    while(idx!=-1)
+    {
+        std::string name=friendlist.substr(start,idx-start);
+        struct bufferevent* b=info->list_friend_online(name);
+        if(b!=NULL)
+        {
+            Val.clear();
+            Val["cmd"]="online";
+            Val["username"]=loginName;
+            thread_write_data(b,Val);
+        }
+        start=idx+1;
+        idx=friendlist.find('|',start);
+    }
+
+    //处理最后一个好友
+    std::string name=friendlist.substr(start);
+    struct bufferevent* b=info->list_friend_online(name);
+    if(b!=NULL)
+    {
+        Val.clear();
+        Val["cmd"]="online";
+        Val["username"]=loginName;
+        thread_write_data(b,Val);
+    }
+    
+    //断开与数据库的连接
+    db->database_disconnect();
 }

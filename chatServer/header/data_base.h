@@ -5,6 +5,7 @@
 #include<stdio.h>
 #include<iostream>
 #include<jsoncpp/json/json.h>
+#include <shared_mutex>
 //数据库类
 class DataBase
 {
@@ -36,7 +37,7 @@ public:
      * @note g数组中的字符串格式形如:groupname|membername1|membername2......
      * @return 查询结果的条数
     */  
-    int data_base_get_group_info(std::string* g);
+    int database_get_group_info(std::string* g);
 
     /**
      * @brief 判断用户是否存在于数据库中
@@ -51,10 +52,25 @@ public:
     */
    void database_insert_user_info(Json::Value& v);
 
+    /**
+     * @brief 判断密码是否正确
+     * @param v 接收到的Json数据
+     * @note 对chat_user数据库进行操作
+    */
+   bool database_password_correct(Json::Value& v);
+
+   /**
+    * @brief 获取用户的好友列表与群列表
+    * @param v 用户个人信息,包含username,password 
+    * @param friList 接收用户好友列表的参数
+    * @param groList 接收用户群组列表的参数
+    * @return 成功返回true 失败返回false
+   */
+   bool database_get_friend_group(Json::Value& v,std::string& friList,std::string& groList);
 private:
     MYSQL* mysql;
-    //数据库的锁 后面可以优化成读写锁
-    std::mutex mutex_;
+    //数据库的锁(读写锁)
+    std::shared_mutex mutex_;
 };
 
 #endif

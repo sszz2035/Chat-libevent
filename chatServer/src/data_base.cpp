@@ -12,6 +12,9 @@ DataBase::~DataBase()
 
 bool DataBase::database_connect()
 {
+    //上写锁
+    std::unique_lock<std::shared_mutex>lock(mutex_);
+
     //初始化数据库句柄
     mysql=mysql_init(NULL);
     if(mysql==NULL)
@@ -40,8 +43,11 @@ void DataBase::database_disconnect()
     mysql_close(mysql);
 }
 
-int DataBase::data_base_get_group_info(std::string* g)
+int DataBase::database_get_group_info(std::string* g)
 {
+    //上读锁
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+
     //查询所有群信息
     if(mysql_query(mysql,"SELECT * FROM chat_group;"))
     {
@@ -66,6 +72,7 @@ int DataBase::data_base_get_group_info(std::string* g)
         g[idx]+=r[2];
         idx++;
     }
+
     //释放结果
     mysql_free_result(res);
     return idx;
@@ -108,23 +115,29 @@ bool DataBase::database_init_table()
 
 bool DataBase::database_user_is_exist(std::string usr)
 {
+    //上读锁
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+
     char sql[256];
     sprintf(sql,"SELECT * FROM chat_user WHERE username ='%s';",usr.c_str());
     //查询是否有此用户
     if(mysql_query(mysql,sql)!=0)
     {
         LOG_PERROR("mysql_query");        
-        return true;
+        return false;
     }
     //储存查询结果
     MYSQL_RES *res=mysql_store_result(mysql);
     if(res==NULL)
     {
         LOG_PERROR("mysql_store_result");       
-        return true;
+        return false;
     }
     //判断查询结果
     MYSQL_ROW row=mysql_fetch_row(res);
+    
+    mysql_free_result(res);
+
     if(row==NULL)
     {
         return false;
@@ -137,6 +150,9 @@ bool DataBase::database_user_is_exist(std::string usr)
 
 void DataBase::database_insert_user_info(Json::Value& v)
 {
+    //上写锁
+    std::unique_lock<std::shared_mutex>lock(mutex_);
+
     std::string username=v["username"].asString();
     std::string password=v["password"].asString();
     char sql[256]={0};
@@ -146,4 +162,74 @@ void DataBase::database_insert_user_info(Json::Value& v)
         LOG_PERROR("mysql_query");       
         return ;
     }
+}
+
+bool DataBase::database_password_correct(Json::Value& v)
+{
+    //上读锁
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    //查询用户密码
+    char sql[256]={0};
+    sprintf(sql,"SELECT password FROM chat_user WHERE username='%s';",v["username"].asCString());
+    if(mysql_query(mysql,sql))
+    {
+        LOG_PERROR("mysql query");
+        return false;
+    }
+    MYSQL_RES* res=mysql_store_result(mysql);
+    if(res==NULL)
+    {
+        LOG_PERROR("mysql_store_result");       
+        return false;
+    }
+    //判断查询结果
+    MYSQL_ROW row=mysql_fetch_row(res);
+    if(row==NULL)
+    {
+        LOG_PERROR("mysql_fetch_row");
+        return false;
+    }
+
+    //释放结果
+    mysql_free_result(res);
+
+    // 密码不正确
+    if(strcmp(row[0],v["password"].asCString()))    return false;
+    //密码正确
+    else return true;
+}
+
+bool DataBase::database_get_friend_group(Json::Value& v,std::string& friList,std::string& groList)
+{
+    //添加读锁(必要的，保护mysql变量不受其他影响)
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+
+    //查询用户的好友列表和群组列表
+    char sql[256]={0};
+    sprintf(sql,"SELECT COALESCE(friendlist,''),COALESCE(grouplist,'') \
+    FROM chat_user WHERE username='%s';",v["username"].asCString());
+    if(mysql_query(mysql,sql))
+    {
+        LOG_PERROR("mysql_query");
+        return false;
+    }
+    MYSQL_RES* res=mysql_store_result(mysql);
+    if(res==NULL)
+    {
+        LOG_PERROR("mysql_store_result");
+        return false;
+    }
+    MYSQL_ROW row =mysql_fetch_row(res);
+    if(row==NULL)
+    {
+        LOG_PERROR("mysql_fetch_row");
+        return false;
+    }
+    //将好友列表和群组列表赋值
+    friList=std::string(row[0]);
+    groList=std::string(row[1]);
+    //释放结果
+    mysql_free_result(res);
+
+    return true;
 }

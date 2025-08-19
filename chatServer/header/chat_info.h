@@ -5,11 +5,18 @@
 #include<string>
 #include<mutex>
 #include<iostream>
-
+#include<jsoncpp/json/json.h>
 /*用户类*/
 class User
 {
 public:
+    // /**
+    //  * @brief 重载==运算符,当name相等时两个User相等
+    //  * @param other 另一个User
+    //  * @return name相等返回true 不相等返回false
+    // */
+    // bool operator==(const User& other);
+
     //账号(用户名)
     std::string name;
     //客户端对应的事件
@@ -42,6 +49,21 @@ public:
      * @brief 打印group_info的信息
     */
    void list_print_group();
+
+    /**
+     * @brief 更新在线用户链表
+     * @param bev 当前用户所对应的事件
+     * @param v 当前用户个人信息
+     * @return 成功返回true 失败返回false
+    */
+   bool list_update_list(struct bufferevent* bev,Json::Value& v);
+
+    /**
+     * @brief 从在线的人中查找user，返回user对应的事件
+     * @param user 用户名
+     * @return 查找成功返回对应的事件，失败返回NULL
+    */
+   struct bufferevent* list_friend_online(const std::string& user);
 
 };
 #endif
