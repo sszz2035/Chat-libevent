@@ -313,7 +313,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
     }
 
     // 修改数据库
-    
+    db->database_add_friend(v);
     // 回复好友
 
     // 回复客户端

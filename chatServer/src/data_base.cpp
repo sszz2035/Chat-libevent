@@ -50,6 +50,47 @@ void DataBase::database_disconnect()
     mysql.reset();
 }
 
+bool DataBase::exec_query_and_fetch_row(const char* sql, MYSQL_ROW& row)
+{
+    //上读锁
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+
+    if(mysql_query(mysql.get(),sql))
+    {
+        LOG_PERROR("mysql_query");        
+        return false;
+    }
+    //存储结果
+     MYSQL_RES* res=mysql_store_result(mysql.get());
+     if(res==NULL)
+    {
+        LOG_PERROR("mysql_store_result");      
+        mysql_free_result(res);  
+        return -1;
+    }
+    MYSQL_ROW r=mysql_fetch_row(res);
+    if(r==NULL)
+    {
+        LOG_PERROR("mysql_fetch_row");
+        return false;
+    }
+    //返回结果
+    row=r;
+    return true;
+}
+
+bool DataBase::exec_update(const char* sql)
+{
+    //上写锁
+    std::unique_lock<std::shared_mutex>lock(mutex_);
+    if(mysql_query(mysql.get(),sql))
+    {
+        LOG_PERROR("mysql_query");        
+        return false;
+    }
+    return true;
+}
+
 int DataBase::database_get_group_info(std::string* g)
 {
     //上读锁
@@ -65,7 +106,8 @@ int DataBase::database_get_group_info(std::string* g)
     MYSQL_RES* res=mysql_store_result(mysql.get());
     if(res==NULL)
     {
-        LOG_PERROR("mysql_store_result");        
+        LOG_PERROR("mysql_store_result");    
+        mysql_free_result(res);      
         return -1;
     }
     
@@ -240,3 +282,47 @@ bool DataBase::database_get_friend_group(const Json::Value& v,std::string& friLi
 
     return true;
 }
+
+void DataBase::database_update_friendlist(const std::string& u,const std::string& f)
+{
+    std::string friendlist;
+    //查询数据库中的u的好友列表
+    char sql[256]={0};
+    sprintf(sql,"SELECT COALESCE(friendlist,'') FROM chat_user WHERE username='%s';",u.c_str());
+    MYSQL_ROW row;
+    if(!exec_query_and_fetch_row(sql,row))
+    {
+        LOG_ERROR("exec_query_and_fetch_row");
+        return;
+    }
+    friendlist=std::string(row[0]);
+    //如果为空串
+    if(friendlist.empty())
+    {
+        friendlist.append(f);
+    }
+    else
+    {
+        friendlist.append("|");
+        friendlist.append(f);
+    }
+
+    //更新好友列表
+    memset(sql,0,sizeof(sql));
+    sprintf(sql,"UPDATE chat_user SET friendlist='%s' WHERE username='%s';",friendlist.c_str(),u.c_str());
+    if(!exec_update(sql))
+    {
+        LOG_ERROR("exec_update");
+        return;
+    }
+}
+
+void DataBase::database_add_friend(const Json::Value& v)
+{
+    std::string username=v["username"].asString();
+    std::string friendname=v["friend"].asString();
+    database_update_friendlist(username,friendname);
+    database_update_friendlist(friendname,username);
+}
+
+

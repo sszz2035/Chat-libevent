@@ -78,7 +78,37 @@ public:
     * @return 成功返回true 失败返回false
    */
    bool database_get_friend_group(const Json::Value& v,std::string& friList,std::string& groList);
+
+   /**
+    * @brief 用于处理添加好友的更新好友列表操作
+    * @param u 要更新好友列表的用户
+    * @param f 用户的新好友
+    * @note 修改chat_user表
+   */
+   void database_update_friendlist(const std::string& u,const std::string& f);
+
+   /**
+    * @brief 添加好友成功后对数据库进行处理的函数\
+    * @param v 添加好友请求信息 
+   */
+   void database_add_friend(const Json::Value& v);
 private:
+
+    /**
+     * @brief [辅助函数] 用于执行查询命令，并返回查询结果
+     * @param sql 查询语句
+     * @param row 接收查询结果
+     * @note 返回的是一行的结果
+     * @return 成功返回true 失败返回false
+    */
+    bool exec_query_and_fetch_row(const char* sql, MYSQL_ROW& row);
+
+    /**
+     * @brief [辅助函数] 用于执行不返回结果的sql语句(UPDATE,INSERT,DELETE)
+     * @param sql 查询语句
+     * @return 成功返回true 失败返回false
+    */
+    bool exec_update(const char* sql);
     //数据库指针
     std::unique_ptr<MYSQL,MysqlDeleter>mysql;
     //数据库的锁(读写锁)
