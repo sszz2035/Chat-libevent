@@ -5,12 +5,14 @@
 #include <thread>
 #include <event.h>
 #include <cstring>
-#include<jsoncpp/json/json.h>
+#include <memory>
+#include <jsoncpp/json/json.h>
+#include "event_utils.h"
 class ChatThread
 {
 public:
     /**
-     * @brief 构造函数，创建新线程，并让其开始工作
+     * @brief 构造函数，创建事件集合，创建新线程，并让其开始工作
      * @details 调用了worker函数
     */
     ChatThread();
@@ -21,7 +23,7 @@ public:
      * @param info 链表指针，指向服务器的链表
      * @param db 数据库指针，指向服务器的数据库
      */
-    void start(ChatInfo *info, DataBase *db);
+    void start(std::shared_ptr<ChatInfo> &info, std::shared_ptr<DataBase> &db);
 
     /**
      * @brief 工作函数，用于线程池工作
@@ -77,17 +79,6 @@ public:
     */
     void thread_login(struct bufferevent* bev,Json::Value& v);
 private:
-    // 线程
-    std::thread *_thread;
-    // 线程号
-    std::thread::id _id;
-    // 事件集合
-    struct event_base *base;
-    // 数据库对象
-    DataBase *db;
-    // 数据结构对象
-    ChatInfo *info;
-
     /**
      * @brief 用于worker函数内部，是工作的具体行为
      */
@@ -104,5 +95,31 @@ private:
      * @note 在thread_readcb中被调用
     */
     bool thread_read_data(struct bufferevent* bev,char *s);
+
+    /**
+     * @brief 根据"|"来解析字符串，并将解析的结果放入s中
+     * @param f 待解析的字符串
+     * @param s 字符串数组，存放解析结果
+     * @return 返回解析出的字符串个数
+    */
+    int thread_parse_string(std::string &f,std::string *s);
+
+    /**
+     * @brief 处理添加好友事件
+     * @param bev 发出请求的客户端事件
+     * @param v 客户端信息
+    */
+    void thread_add_friend(struct bufferevent* bev,const Json::Value& v);
+
+    // 事件集合
+    std::unique_ptr<struct event_base,EventBaseDeleter>base;
+    // 线程
+    std::unique_ptr<std::thread>_thread;
+    // 线程号
+    std::thread::id _id;
+    // 数据库对象
+    std::shared_ptr<DataBase>db;
+    // 数据结构对象
+    std::shared_ptr<ChatInfo>info;
 };
 #endif

@@ -5,7 +5,18 @@
 #include<stdio.h>
 #include<iostream>
 #include<jsoncpp/json/json.h>
+#include<memory>
 #include <shared_mutex>
+
+//为MYSQL* 指针定制的删除器
+struct MysqlDeleter {
+    void operator()(MYSQL* mysql) const {
+        if (mysql) {
+            mysql_close(mysql);
+        }
+    }
+};
+
 //数据库类
 class DataBase
 {
@@ -66,9 +77,10 @@ public:
     * @param groList 接收用户群组列表的参数
     * @return 成功返回true 失败返回false
    */
-   bool database_get_friend_group(Json::Value& v,std::string& friList,std::string& groList);
+   bool database_get_friend_group(const Json::Value& v,std::string& friList,std::string& groList);
 private:
-    MYSQL* mysql;
+    //数据库指针
+    std::unique_ptr<MYSQL,MysqlDeleter>mysql;
     //数据库的锁(读写锁)
     std::shared_mutex mutex_;
 };

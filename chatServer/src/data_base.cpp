@@ -16,31 +16,38 @@ bool DataBase::database_connect()
     std::unique_lock<std::shared_mutex>lock(mutex_);
 
     //初始化数据库句柄
-    mysql=mysql_init(NULL);
-    if(mysql==NULL)
+    MYSQL* mysql_handle=mysql_init(NULL);
+    if(mysql_handle==NULL)
     {
         LOG_PERROR("mysql_init_error");
         return false;
     }
     //连接mysql
-    if(mysql_real_connect(mysql,"localhost","root","5201314Zqzq!","chat_database",0,NULL,0)==NULL)
+    if(mysql_real_connect(mysql_handle,"localhost","root","5201314Zqzq!","chat_database",0,NULL,0)==NULL)
     {
-        LOG_PERROR("mysql_real_connect");        
+        LOG_PERROR("mysql_real_connect");      
+        mysql_close(mysql_handle);  
         return false;
     }
 
     //设置编码格式为utf8mb4
-    if(mysql_query(mysql,"SET NAMES utf8mb4")!=0)
+    if(mysql_query(mysql_handle,"SET NAMES utf8mb4")!=0)
     {
         LOG_PERROR("mysql_query");        
+        mysql_close(mysql_handle);  
         return false;
     }
+    //将指针所有权交给智能指针
+    mysql.reset(mysql_handle);
     return true;
 }
 
 void DataBase::database_disconnect()
 {
-    mysql_close(mysql);
+    //上写锁
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    //释放对象
+    mysql.reset();
 }
 
 int DataBase::database_get_group_info(std::string* g)
@@ -49,13 +56,13 @@ int DataBase::database_get_group_info(std::string* g)
     std::shared_lock<std::shared_mutex> lock(mutex_);
 
     //查询所有群信息
-    if(mysql_query(mysql,"SELECT * FROM chat_group;"))
+    if(mysql_query(mysql.get(),"SELECT * FROM chat_group;"))
     {
         LOG_PERROR("mysql_query");        
         return -1;
     }
     //存储结果
-    MYSQL_RES* res=mysql_store_result(mysql);
+    MYSQL_RES* res=mysql_store_result(mysql.get());
     if(res==NULL)
     {
         LOG_PERROR("mysql_store_result");        
@@ -92,7 +99,7 @@ bool DataBase::database_init_table()
     groupowner VARCHAR(128),\
     groupnumber VARCHAR(4096)\
     )charset utf8mb4";
-    if(mysql_query(mysql,g))
+    if(mysql_query(mysql.get(),g))
     {
         LOG_PERROR("mysql_query");        
         return false;
@@ -103,7 +110,7 @@ bool DataBase::database_init_table()
     friendlist VARCHAR(4096),\
     grouplist VARCHAR(4096)\
     )charset utf8mb4";
-    if(mysql_query(mysql,q))
+    if(mysql_query(mysql.get(),q))
     {
         LOG_PERROR("mysql_query");      
         return false;
@@ -121,13 +128,13 @@ bool DataBase::database_user_is_exist(std::string usr)
     char sql[256];
     sprintf(sql,"SELECT * FROM chat_user WHERE username ='%s';",usr.c_str());
     //查询是否有此用户
-    if(mysql_query(mysql,sql)!=0)
+    if(mysql_query(mysql.get(),sql)!=0)
     {
         LOG_PERROR("mysql_query");        
         return false;
     }
     //储存查询结果
-    MYSQL_RES *res=mysql_store_result(mysql);
+    MYSQL_RES *res=mysql_store_result(mysql.get());
     if(res==NULL)
     {
         LOG_PERROR("mysql_store_result");       
@@ -157,7 +164,7 @@ void DataBase::database_insert_user_info(Json::Value& v)
     std::string password=v["password"].asString();
     char sql[256]={0};
     sprintf(sql,"INSERT INTO chat_user(username,password) VALUES('%s','%s');",username.c_str(),password.c_str());
-    if(mysql_query(mysql,sql))
+    if(mysql_query(mysql.get(),sql))
     {
         LOG_PERROR("mysql_query");       
         return ;
@@ -171,12 +178,12 @@ bool DataBase::database_password_correct(Json::Value& v)
     //查询用户密码
     char sql[256]={0};
     sprintf(sql,"SELECT password FROM chat_user WHERE username='%s';",v["username"].asCString());
-    if(mysql_query(mysql,sql))
+    if(mysql_query(mysql.get(),sql))
     {
         LOG_PERROR("mysql query");
         return false;
     }
-    MYSQL_RES* res=mysql_store_result(mysql);
+    MYSQL_RES* res=mysql_store_result(mysql.get());
     if(res==NULL)
     {
         LOG_PERROR("mysql_store_result");       
@@ -199,7 +206,7 @@ bool DataBase::database_password_correct(Json::Value& v)
     else return true;
 }
 
-bool DataBase::database_get_friend_group(Json::Value& v,std::string& friList,std::string& groList)
+bool DataBase::database_get_friend_group(const Json::Value& v,std::string& friList,std::string& groList)
 {
     //添加读锁(必要的，保护mysql变量不受其他影响)
     std::shared_lock<std::shared_mutex> lock(mutex_);
@@ -208,12 +215,12 @@ bool DataBase::database_get_friend_group(Json::Value& v,std::string& friList,std
     char sql[256]={0};
     sprintf(sql,"SELECT COALESCE(friendlist,''),COALESCE(grouplist,'') \
     FROM chat_user WHERE username='%s';",v["username"].asCString());
-    if(mysql_query(mysql,sql))
+    if(mysql_query(mysql.get(),sql))
     {
         LOG_PERROR("mysql_query");
         return false;
     }
-    MYSQL_RES* res=mysql_store_result(mysql);
+    MYSQL_RES* res=mysql_store_result(mysql.get());
     if(res==NULL)
     {
         LOG_PERROR("mysql_store_result");

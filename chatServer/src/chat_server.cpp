@@ -1,13 +1,9 @@
 #include"chat_server.h"
 #include"log.h"
-ChatServer::ChatServer()
+ChatServer::ChatServer():base(event_base_new()),
+db(std::make_shared<DataBase>()),
+info(std::make_shared<ChatInfo>())
 {
-    //初始化事件集合
-    this->base=event_base_new();
-    //初始化数据库对象
-    db=new DataBase();
-    //初始化数据结构对象
-    info=new ChatInfo();
     //初始化数据表
     if(!db->database_init_table())
     {
@@ -20,17 +16,20 @@ ChatServer::ChatServer()
     //初始化线程池
     thread_num=POOL_MAX_THREAD_SZ;
     cur_thread=0;
-    pool=new ChatThread[thread_num];
     for(int i=0;i<thread_num;i++)
     {
-        pool[i].start(info,db);
+        pool.emplace_back(std::make_unique<ChatThread>());
+    }
+    //线程池开始工作
+    for(int i=0;i<thread_num;i++)
+    {
+        pool[i]->start(info,db);
     }
 }
 
 ChatServer::~ChatServer()
 {
-    if(db)  delete db;
-    if(info) delete info;
+
 }
 
 /*创建监听对象*/
@@ -42,7 +41,7 @@ void ChatServer::listen(const char* ip,int port)
     client_info.sin_addr.s_addr=inet_addr(ip);
     client_info.sin_port=htons(port);
     //进入监听状态
-    struct evconnlistener* listener=evconnlistener_new_bind(base,listener_cb,this,LEV_OPT_CLOSE_ON_FREE| LEV_OPT_REUSEABLE
+    struct evconnlistener* listener=evconnlistener_new_bind(base.get(),listener_cb,this,LEV_OPT_CLOSE_ON_FREE| LEV_OPT_REUSEABLE
     ,5,(struct sockaddr*)&client_info,sizeof(client_info));
 
     if(listener==NULL)
@@ -52,11 +51,11 @@ void ChatServer::listen(const char* ip,int port)
     }
 
     //监听集合
-    event_base_dispatch(base);
+    event_base_dispatch(base.get());
 
     //释放对象
     evconnlistener_free(listener);
-    event_base_free(base);
+    base.reset();
 }
 
 //listen的回调函数
@@ -98,7 +97,7 @@ void ChatServer::server_update_group_info()
 void ChatServer::server_alloc_event(int fd)
 {
     //要操作的线程
-    struct ChatThread *t=&pool[cur_thread];
+    struct ChatThread *t=pool[cur_thread].get();
     struct event_base *t_base= t->thread_get_base();
     cur_thread=(cur_thread+1)%thread_num;
     std::cout<<"--- 线程"<<t->thread_get_id()<<"已分配任务"<<std::endl;

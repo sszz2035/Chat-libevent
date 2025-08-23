@@ -1,58 +1,54 @@
-#include"chat_thread.h"
-#include"log.h"
-ChatThread::ChatThread()
+#include "chat_thread.h"
+#include "log.h"
+ChatThread::ChatThread():base(event_base_new()),
+_thread(std::make_unique<std::thread>(worker,this)),
+_id(_thread->get_id())
 {
-    // 创建事件集合
-    base=event_base_new();
-    //创建新线程
-    _thread=new std::thread(worker,this);
-    //将id赋值为线程id号
-    _id=_thread->get_id();
 }
 
 ChatThread::~ChatThread()
 {
-    if(_thread) delete _thread;
+
 }
 
-void ChatThread::start(ChatInfo* info,DataBase*db)
+void ChatThread::start(std::shared_ptr<ChatInfo> &info,std::shared_ptr<DataBase> &db)
 {
-    this->info=info;
-    this->db=db;
+    this->info = info;
+    this->db = db;
 }
 
-void ChatThread::worker(ChatThread* t)
+void ChatThread::worker(ChatThread *t)
 {
     t->run();
 }
 
 void ChatThread::run()
 {
-    //创建一个定时器事件
-    struct event* timeout=event_new(base,-1,EV_PERSIST,timeout_cb,this);
-    if (!timeout) 
+    // 创建一个定时器事件
+    struct event *timeout = event_new(base.get(), -1, EV_PERSIST, timeout_cb, this);
+    if (!timeout)
     {
-        LOG_PERROR("event_new");        
+        LOG_PERROR("event_new");
         return;
     }
 
     struct timeval tv;
-    //给tv变量清0
+    // 给tv变量清0
     evutil_timerclear(&tv);
-    tv.tv_sec=3;
-    //将事件添加到base中
-    event_add(timeout,&tv);
-    std::cout<<"--- thread " <<_id<<" start working ..."<<std::endl;
-    //开始执行事件
-    event_base_dispatch(base);
+    tv.tv_sec = 3;
+    // 将事件添加到base中
+    event_add(timeout, &tv);
+    std::cout << "--- thread " << _id << " start working ..." << std::endl;
+    // 开始执行事件
+    event_base_dispatch(base.get());
 
-    //回收事件集合
-    event_base_free(base);
+    // 回收事件集合
+    base.reset();
 }
 
-void ChatThread::timeout_cb(evutil_socket_t fd,short event,void* arg)
+void ChatThread::timeout_cb(evutil_socket_t fd, short event, void *arg)
 {
-    ChatThread* t=(ChatThread*)arg;
+    ChatThread *t = (ChatThread *)arg;
     // std::cout<<"thread"<<t->get_id()<<" is listening"<<std::endl;
 }
 
@@ -63,207 +59,266 @@ std::thread::id ChatThread::thread_get_id()
 
 struct event_base *ChatThread::thread_get_base()
 {
-    return base;
+    return base.get();
 }
-
 
 void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
-{   
-    ChatThread* t=(ChatThread*)ctx;
+{
+    ChatThread *t = (ChatThread *)ctx;
     char buf[1024];
-    memset(buf,0,sizeof(buf));
-    if(!t->thread_read_data(bev,buf))
+    memset(buf, 0, sizeof(buf));
+    if (!t->thread_read_data(bev, buf))
     {
-        LOG_PERROR("thread_read_data");        
+        LOG_PERROR("thread_read_data");
         return;
     }
-    std::cout<<"--thread "<<t->thread_get_id()<<" receive data "<<buf<<std::endl;
+    std::cout << "--thread " << t->thread_get_id() << " receive data " << buf << std::endl;
 
-    //解析json数据
-    Json::Reader reader;//json 解析对象
-    Json::Value  val; //json存储的容器 类似于map
+    // 解析json数据
+    Json::Reader reader; // json 解析对象
+    Json::Value val;     // json存储的容器 类似于map
 
-    if(!reader.parse(buf,val))
+    if (!reader.parse(buf, val))
     {
-        LOG_PERROR("parse");        
+        LOG_PERROR("parse");
         return;
     }
-    //处理注册事件
-    if(val["cmd"]=="register")
+    // 处理注册事件
+    if (val["cmd"] == "register")
     {
         // std::cout<<"客户端注册"<<std::endl;
-        t->thread_register(bev,val);
+        t->thread_register(bev, val);
     }
-    //处理登录事件
-    else if(val["cmd"]=="login")
+    // 处理登录事件
+    else if (val["cmd"] == "login")
     {
-        t->thread_login(bev,val);
+        t->thread_login(bev, val);
     }
-}   
-
-void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
-{   
-
+    // 处理添加好友事件
+    else if (val["cmd"] == "addfriend")
+    {
+        t->thread_add_friend(bev, val);
+    }
 }
 
-bool ChatThread::thread_read_data(struct bufferevent* bev,char *s)
+void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
 {
-    //要读取的长度
-    int sz=0;
-    //先读取长度，放入sz中
-    if(bufferevent_read(bev,&sz,4)!=4)
+}
+
+bool ChatThread::thread_read_data(struct bufferevent *bev, char *s)
+{
+    // 要读取的长度
+    int sz = 0;
+    // 先读取长度，放入sz中
+    if (bufferevent_read(bev, &sz, 4) != 4)
     {
-        LOG_PERROR("bufferevent_read");       
+        LOG_PERROR("bufferevent_read");
         return false;
     }
-    size_t count=0;
-    char buf[1024]={0};
-    while(1)
+    size_t count = 0;
+    char buf[1024] = {0};
+    while (1)
     {
-        //count加上读取到的字符个数
-        count+=bufferevent_read(bev,buf,1024);
-        strcat(s,buf);
-        memset(buf,0,sizeof(buf));
-        //读取到的字符个数>=要读取的字符个数
-        if(count>=sz)   break;
+        // count加上读取到的字符个数
+        count += bufferevent_read(bev, buf, 1024);
+        strcat(s, buf);
+        memset(buf, 0, sizeof(buf));
+        // 读取到的字符个数>=要读取的字符个数
+        if (count >= sz)
+            break;
     }
     return true;
 }
 
-void ChatThread::thread_register(struct bufferevent* bev,Json::Value& v)
+void ChatThread::thread_register(struct bufferevent *bev, Json::Value &v)
 {
-    //连接数据库
-    if(db->database_connect()==false)
-    {   
-        LOG_PERROR("database_connect");        
+    // 连接数据库
+    if (db->database_connect() == false)
+    {
+        LOG_PERROR("database_connect");
         return;
     }
-    //判断用户是否已存在
+    // 判断用户是否已存在
 
-    //用户已存在
-    if(db->database_user_is_exist(v["username"].asString()))
+    // 用户已存在
+    if (db->database_user_is_exist(v["username"].asString()))
     {
         Json::Value val;
-        val["cmd"]="register_reply";
-        val["result"]="user_exist";
-        //发送回应给客户端
-        thread_write_data(bev,val);
+        val["cmd"] = "register_reply";
+        val["result"] = "user_exist";
+        // 发送回应给客户端
+        thread_write_data(bev, val);
     }
 
-    //用户不存在
+    // 用户不存在
     else
-    {   
-        //将用户添加到数据库中
+    {
+        // 将用户添加到数据库中
         db->database_insert_user_info(v);
-        //发送回应给客户端        
+        // 发送回应给客户端
         Json::Value val;
-        val["cmd"]="register_reply";
-        val["result"]="success";
-        thread_write_data(bev,val);
+        val["cmd"] = "register_reply";
+        val["result"] = "success";
+        thread_write_data(bev, val);
     }
 
-    //断开数据库
+    // 断开数据库
     db->database_disconnect();
 }
 
-void ChatThread::thread_write_data(struct bufferevent* bev,Json::Value& v)
+void ChatThread::thread_write_data(struct bufferevent *bev, Json::Value &v)
 {
-    //封装json数据为字符串
+    // 封装json数据为字符串
     Json::FastWriter writer;
-    std::string val=writer.write(v);
-    int len=val.size();
-    char wbuf[1024]={0};
-    memcpy(wbuf,&len,4);
-    memcpy(wbuf+4,val.c_str(),len);
-    //将数据写入输出缓冲区中
-    bufferevent_write(bev,wbuf,len+4);
+    std::string val = writer.write(v);
+    int len = val.size();
+    char wbuf[1024] = {0};
+    memcpy(wbuf, &len, 4);
+    memcpy(wbuf + 4, val.c_str(), len);
+    // 将数据写入输出缓冲区中
+    bufferevent_write(bev, wbuf, len + 4);
 }
 
-void ChatThread::thread_login(struct bufferevent* bev,Json::Value& v)
+void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
 {
-    //连接数据库
-    if(db->database_connect()==false)
+    // 连接数据库
+    if (db->database_connect() == false)
     {
         LOG_PERROR("database_connect");
-        return; 
+        return;
     }
-    std::string loginName=v["username"].asString();
-    //判断登录用户是否存在
-    //用户不存在
-    if(!db->database_user_is_exist(loginName))
+    std::string loginName = v["username"].asString();
+    // 判断登录用户是否存在
+    // 用户不存在
+    if (!db->database_user_is_exist(loginName))
     {
         Json::Value val;
-        val["cmd"]="login_reply";
-        val["result"]="not_exist";
-        thread_write_data(bev,val);
+        val["cmd"] = "login_reply";
+        val["result"] = "not_exist";
+        thread_write_data(bev, val);
         db->database_disconnect();
         return;
     }
-    //用户存在，判断密码是否正确
-    //密码不正确
-    if(!db->database_password_correct(v))
+    // 用户存在，判断密码是否正确
+    // 密码不正确
+    if (!db->database_password_correct(v))
     {
         Json::Value val;
-        val["cmd"]="login_reply";
-        val["result"]="password_error";
-        thread_write_data(bev,val);
+        val["cmd"] = "login_reply";
+        val["result"] = "password_error";
+        thread_write_data(bev, val);
         db->database_disconnect();
         return;
     }
 
-    //读取好友列表与群组列表
-    std::string friendlist,grouplist; 
-    if(!db->database_get_friend_group(v,friendlist,grouplist))
+    // 读取好友列表与群组列表
+    std::string friendlist, grouplist;
+    if (!db->database_get_friend_group(v, friendlist, grouplist))
     {
         LOG_PERROR("database_get_friend_group");
         db->database_disconnect();
         return;
     }
-    //回复客户端登陆成功
+    // 回复客户端登陆成功
     Json::Value Val;
-    Val["cmd"]="login_reply";
-    Val["result"]="success";
-    Val["friendlist"]=friendlist;
-    Val["grouplist"]=grouplist;
-    thread_write_data(bev,Val);
+    Val["cmd"] = "login_reply";
+    Val["result"] = "success";
+    Val["friendlist"] = friendlist;
+    Val["grouplist"] = grouplist;
+    thread_write_data(bev, Val);
 
-    //更新在线用户链表
-    info->list_update_list(bev,v);
-    
-    //发送上线提示给所有好友
-    if(friendlist.empty())  
-    {    
+    // 更新在线用户链表
+    info->list_update_list(bev, v);
+
+    // 发送上线提示给所有好友
+    if (friendlist.empty())
+    {
         db->database_disconnect();
         return;
     }
-    //遍历好友列表，给在线的用户发送信息
-    int start=0,idx=friendlist.find('|');
-    while(idx!=-1)
+
+    // 遍历好友列表，给在线的用户发送信息
+    std::string Friend[1024];
+    int num = thread_parse_string(friendlist, Friend);
+    for (int i = 0; i < num; i++)
     {
-        std::string name=friendlist.substr(start,idx-start);
-        struct bufferevent* b=info->list_friend_online(name);
-        if(b!=NULL)
+        struct bufferevent *b = info->list_friend_online(Friend[i]);
+        if (b == NULL)
         {
-            Val.clear();
-            Val["cmd"]="online";
-            Val["username"]=loginName;
-            thread_write_data(b,Val);
+            db->database_disconnect();
+            return;
         }
-        start=idx+1;
-        idx=friendlist.find('|',start);
+        Val.clear();
+        Val["cmd"] = "online";
+        Val["username"] = loginName;
+        thread_write_data(b, Val);
     }
 
-    //处理最后一个好友
-    std::string name=friendlist.substr(start);
-    struct bufferevent* b=info->list_friend_online(name);
-    if(b!=NULL)
-    {
-        Val.clear();
-        Val["cmd"]="online";
-        Val["username"]=loginName;
-        thread_write_data(b,Val);
-    }
-    
-    //断开与数据库的连接
+    // 断开与数据库的连接
     db->database_disconnect();
+}
+
+int ChatThread::thread_parse_string(std::string &f, std::string *s)
+{
+    int count = 0, start = 0;
+    int idx = f.find('|');
+    while (idx != -1)
+    {
+        s[count++] = f.substr(start, idx - start);
+        start = idx + 1;
+        idx = f.find('|', start);
+    }
+    s[count++] = f.substr(start);
+    return count;
+}
+
+void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v)
+{
+    // 连接数据库
+    if (!db->database_connect())
+    {
+        LOG_PERROR("database_connect");
+        return;
+    }
+    Json::Value val;
+    std::string friendName = v["friend"].asString();
+    // 判断用户是否存在
+    // 用户不存在
+    if (!db->database_user_is_exist(friendName))
+    {
+        val["cmd"] = "addfriend_reply";
+        val["result"] = "not_exist";
+        thread_write_data(bev, val);
+        db->database_disconnect();
+        return;
+    }
+
+    // 判断是否是好友关系
+    std::string Friend[1024];
+    std::string friendlist, grouplist;
+    if (db->database_get_friend_group(v, friendlist, grouplist))
+    {
+        int num = thread_parse_string(friendlist, Friend);
+        for (int i = 0; i < num; i++)
+        {
+            if (Friend[i] == friendName)
+            {
+                val["cmd"] = "addfriend_reply";
+                val["result"] = "already_friend";
+                thread_write_data(bev, val);
+                db->database_disconnect();
+                return;
+            }
+        }
+    }
+
+    // 修改数据库
+    
+    // 回复好友
+
+    // 回复客户端
+    //  val["cmd"]="addfriend_reply";
+    //  val["result"]="success";
+    //  thread_write_Data(bev,val);
+    //  db->database_disconnect();
 }

@@ -8,9 +8,12 @@
 #include<netinet/in.h>
 #include<arpa/inet.h>
 #include<stdlib.h>
+#include<memory>
+#include<vector>
 #include"data_base.h"
 #include"chat_info.h"
 #include"chat_thread.h"
+#include "event_utils.h"
 #define IP "192.168.200.130"
 #define PORT 8888
 //最大群组个数
@@ -45,13 +48,13 @@ public:
     
 private:
     //事件集合对象
-    struct event_base* base;
+    std::unique_ptr<struct event_base,EventBaseDeleter>base;
     //数据库对象
-    DataBase* db;
+    std::shared_ptr<DataBase>db;
     //数据结构对象
-    ChatInfo* info;
+    std::shared_ptr<ChatInfo>info;
     //线程池对象
-    ChatThread* pool;
+    std::vector<std::unique_ptr<ChatThread>>pool;
     //当前线程数量
     int thread_num;
     //当前的线程
