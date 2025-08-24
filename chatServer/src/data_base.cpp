@@ -141,7 +141,7 @@ bool DataBase::database_init_table()
     const char* g="CREATE TABLE IF NOT EXISTS chat_group(\
     groupname VARCHAR(128),\
     groupowner VARCHAR(128),\
-    groupnumber VARCHAR(4096)\
+    groupmumber VARCHAR(4096)\
     )charset utf8mb4";
     if(!exec_update(g))
     {
@@ -254,6 +254,17 @@ void DataBase::database_add_friend(const Json::Value& v)
     std::string friendname=v["friend"].asString();
     database_update_friendlist(username,friendname);
     database_update_friendlist(friendname,username);
+}
+
+void DataBase::database_add_new_group(const std::string &groupname,const std::string &owner)
+{
+    char sql[256]={0};
+    sprintf(sql,"INSERT INTO chat_group VALUES('%s','%s','%s');",groupname.c_str(),owner.c_str(),owner.c_str());
+    if(!exec_update(sql))
+    {
+        LOG_ERROR("exec_update");
+        return;
+    }
 }
 
 

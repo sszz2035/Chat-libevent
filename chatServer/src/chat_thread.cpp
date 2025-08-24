@@ -104,6 +104,11 @@ void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
     {
         t->thread_private_chat(bev,val);
     }
+    //处理添加群组事件
+    else if(val["cmd"]=="creategroup")
+    {
+        t->thread_create_group(bev,val);
+    }
 }
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
@@ -171,7 +176,7 @@ void ChatThread::thread_register(struct bufferevent *bev, Json::Value &v)
     db->database_disconnect();
 }
 
-void ChatThread::thread_write_data(struct bufferevent *bev, Json::Value &v)
+void ChatThread::thread_write_data(struct bufferevent *bev, const Json::Value &v)
 {
     // 封装json数据为字符串
     Json::FastWriter writer;
@@ -354,4 +359,34 @@ void ChatThread::thread_private_chat(struct bufferevent* bev,const Json::Value& 
     val["fromfriend"]=username;
     val["text"]=v["text"];
     thread_write_data(b,val);
+}
+
+void ChatThread::thread_create_group(struct bufferevent* bev,const Json::Value& v)
+{
+    std::string groupname=v["groupname"].asString();
+    Json::Value val;
+    //判断是否已有群
+    if(info->list_group_is_exist(groupname))
+    {
+        val["cmd"]="creategroup_reply";
+        val["result"]="exist";
+        thread_write_data(bev,val);
+        return;
+    }
+
+    //在数据库中添加新群
+    if(!db->database_connect())
+    {
+        LOG_ERROR("database_connect");
+        return;
+    }
+    db->database_add_new_group(groupname,v["owner"].asString());
+    db->database_disconnect();
+    
+   //将新群添加到群信息中
+    info->list_add_new_group(groupname,v["owner"].asString());
+
+    val["cmd"]="creategroup_reply";
+    val["result"]="success";
+    thread_write_data(bev,val);
 }

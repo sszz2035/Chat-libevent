@@ -52,7 +52,7 @@ void ChatInfo::list_update_group(std::string* g,int size)
 void ChatInfo::list_print_group()
 {    
     //上锁
-    std::unique_lock<std::mutex>lock(list_mutex);
+    std::unique_lock<std::mutex>lock(map_mutex);
     for(auto it=group_info->begin();it!=group_info->end();it++)
     {
         std::cout<<it->first<<" ";
@@ -88,4 +88,23 @@ struct bufferevent* ChatInfo::list_friend_online(const std::string& user)
     {
         return NULL;
     }
+}
+
+bool ChatInfo::list_group_is_exist(const std::string &groupname)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);
+    auto it=group_info->find(groupname);
+    //存在
+    if(it!=group_info->end())   return true;
+    else    return false;
+}
+
+void ChatInfo::list_add_new_group(const std::string &groupname,const std::string& owner)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);
+    std::list<std::string>l;
+    l.push_back(owner);
+    group_info->insert(std::make_pair(groupname,l));
 }

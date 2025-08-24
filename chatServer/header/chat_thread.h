@@ -71,7 +71,7 @@ public:
      * @param bev 对应事件
      * @param v 要写入的数据
     */
-    void thread_write_data(struct bufferevent* bev,Json::Value& v);
+    void thread_write_data(struct bufferevent* bev,const Json::Value& v);
 
     /**
      * @brief 处理客户端登录事件
@@ -119,6 +119,12 @@ private:
     */
     void thread_private_chat(struct bufferevent* bev,const Json::Value& v);
 
+    /**
+     * @brief 处理创建群聊事件
+     * @param bev 发出请求的客户端事件
+     * @param v 群信息
+    */
+    void thread_create_group(struct bufferevent* bev,const Json::Value& v);
     // 事件集合
     std::unique_ptr<struct event_base,EventBaseDeleter>base;
     // 线程

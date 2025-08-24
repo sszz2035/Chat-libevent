@@ -37,7 +37,7 @@ public:
     void database_disconnect();
 
     /**
-     * @brief 初始化数据库
+     * @brief 初始化数据库,创建chat_group和chat_user表
      * @return 成功返回true 失败返回false
     */
     bool database_init_table();
@@ -92,6 +92,14 @@ public:
     * @param v 添加好友请求信息 
    */
    void database_add_friend(const Json::Value& v);
+
+   /**
+    * @brief 将新群添加到数据库中
+    * @param groupname 群名称
+    * @param owner 群主名称
+   */
+   void database_add_new_group(const std::string &groupname,const std::string &owner);
+
 private:
 
     /**
