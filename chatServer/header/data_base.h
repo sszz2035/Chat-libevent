@@ -100,6 +100,13 @@ public:
    */
    void database_add_new_group(const std::string &groupname,const std::string &owner);
 
+   /**
+    * @brief 将新成员添加到群中
+    * @param groupname 群名称
+    * @param username 用户名称
+   */
+   void database_update_group_member(const std::string &groupname,const std::string &username);
+    
 private:
 
     /**

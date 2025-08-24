@@ -26,12 +26,6 @@ public:
     void start(std::shared_ptr<ChatInfo> &info, std::shared_ptr<DataBase> &db);
 
     /**
-     * @brief 工作函数，用于线程池工作
-     * @param 要操作的线程
-     */
-    static void worker(ChatThread* t);
-
-    /**
      * @brief 获取线程号
      * @return 返回线程id
      */
@@ -49,7 +43,7 @@ public:
      * @param ctx 传给回调函数的参数
      * @details 处理注册、登录、添加好友、私聊等事件
     */
-    static void thread_readcb(struct bufferevent *bev, void *ctx);
+    static void thread_read_cb(struct bufferevent *bev, void *ctx);
 
     /**
      * @brief 处理异常事件的回调函数
@@ -60,36 +54,30 @@ public:
     static void thread_event_cb(struct bufferevent *bev, short events, void *ctx);
 
     /**
-     * @brief 处理客户端注册事件
-     * @param bev 对应事件
-     * @param v 接收到的Json数据
-    */
-    void thread_register(struct bufferevent* bev,Json::Value& v);
-
-    /**
      * @brief 写入数据，供客户端接收
      * @param bev 对应事件
      * @param v 要写入的数据
     */
     void thread_write_data(struct bufferevent* bev,const Json::Value& v);
 
-    /**
-     * @brief 处理客户端登录事件
-     * @param bev 对应事件
-     * @param v 接收到的Json数据
-    */
-    void thread_login(struct bufferevent* bev,Json::Value& v);
 private:
+    
     /**
      * @brief 用于worker函数内部，是工作的具体行为
      */
     void run();
 
     /**
+     * @brief 工作函数，用于线程池工作
+     * @param 要操作的线程
+     */
+    static void worker(ChatThread* t);
+    
+    /**
      * @brief 定时器的回调函数
      */
     static void timeout_cb(evutil_socket_t fd, short event, void *arg);
-
+    
     /**
      * @brief 读取数据的函数,解决TCP分包问题
      * @return 成功读取返回true 否则返回false
@@ -104,6 +92,20 @@ private:
      * @return 返回解析出的字符串个数
     */
     int thread_parse_string(std::string &f,std::string *s);
+    
+    /**
+     * @brief 处理客户端登录事件
+     * @param bev 对应事件
+     * @param v 接收到的Json数据
+    */
+    void thread_login(struct bufferevent* bev,Json::Value& v);
+    
+    /**
+     * @brief 处理客户端注册事件
+     * @param bev 对应事件
+     * @param v 接收到的Json数据
+    */
+    void thread_register(struct bufferevent* bev,Json::Value& v);
 
     /**
      * @brief 处理添加好友事件
@@ -125,6 +127,14 @@ private:
      * @param v 群信息
     */
     void thread_create_group(struct bufferevent* bev,const Json::Value& v);
+
+    /**
+     * @brief 处理添加群事件
+     * @param bev 发出请求的客户端事件
+     * @param v 请求加入的群的信息
+    */
+    void thread_join_group(struct bufferevent* bev,const Json::Value& v);
+
     // 事件集合
     std::unique_ptr<struct event_base,EventBaseDeleter>base;
     // 线程

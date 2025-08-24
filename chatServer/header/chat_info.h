@@ -80,5 +80,13 @@ public:
      * @note 默认群只有群主一人
     */
     void list_add_new_group(const std::string &groupname,const std::string& owner);
+
+    /**
+     * @brief 判断用户是否已经存在于群中
+     * @param groupname 群名称
+     * @param username 用户名称
+     * @note 使用此函数之前请确保群是已经存在的
+    */
+    bool list_member_is_group(const std::string& groupname,const std::string& username);
 };
 #endif

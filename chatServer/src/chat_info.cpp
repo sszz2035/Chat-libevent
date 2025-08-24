@@ -108,3 +108,15 @@ void ChatInfo::list_add_new_group(const std::string &groupname,const std::string
     l.push_back(owner);
     group_info->insert(std::make_pair(groupname,l));
 }
+
+bool ChatInfo::list_member_is_group(const std::string& groupname,const std::string& username)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);   
+    auto it=group_info->find(groupname);
+    auto ite=std::find(it->second.begin(),it->second.end(),username);
+    //存在于群中
+    if(ite!=it->second.end())   return true;
+    //不存在于群中
+    else return false;
+}

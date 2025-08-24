@@ -109,7 +109,7 @@ void ChatServer::server_alloc_event(int fd)
         return ;
     }
     //设置回调函数
-    bufferevent_setcb(evt,ChatThread::thread_readcb,NULL,ChatThread::thread_event_cb,t);
+    bufferevent_setcb(evt,ChatThread::thread_read_cb,NULL,ChatThread::thread_event_cb,t);
     //启用读事件
     bufferevent_enable(evt,EV_READ);
 }

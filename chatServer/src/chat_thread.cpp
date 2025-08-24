@@ -62,7 +62,7 @@ struct event_base *ChatThread::thread_get_base()
     return base.get();
 }
 
-void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
+void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
 {
     ChatThread *t = (ChatThread *)ctx;
     char buf[1024];
@@ -108,6 +108,11 @@ void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
     else if(val["cmd"]=="creategroup")
     {
         t->thread_create_group(bev,val);
+    }
+    //处理加入群聊事件
+    else if(val["cmd"]=="joingroup")
+    {
+        t->thread_join_group(bev,val);
     }
 }
 
@@ -390,3 +395,32 @@ void ChatThread::thread_create_group(struct bufferevent* bev,const Json::Value& 
     val["result"]="success";
     thread_write_data(bev,val);
 }
+
+void ChatThread::thread_join_group(struct bufferevent* bev,const Json::Value& v)
+{
+    std::string groupname=v["groupname"].asString();
+    std::string username=v["username"].asString();
+    Json::Value val;
+    //判断群是否存在
+    if(!info->list_group_is_exist(groupname))
+    {
+        val["cmd"]="joingroup_reply";
+        val["result"]="not_exist";
+        thread_write_data(bev,val);
+        return;
+    }
+    //判断群中是否已有当前成员
+    if(info->list_member_is_group(groupname,username))
+    {
+        val["cmd"]="joingroup_reply";
+        val["result"]="already";
+        thread_write_data(bev,val);
+        return;
+    }
+    //修改数据库
+    db->database_connect();
+    db->database_update_group_member(groupname,username);
+    db->database_disconnect(); 
+    //更新链表中群信息
+    
+}   

@@ -141,7 +141,7 @@ bool DataBase::database_init_table()
     const char* g="CREATE TABLE IF NOT EXISTS chat_group(\
     groupname VARCHAR(128),\
     groupowner VARCHAR(128),\
-    groupmumber VARCHAR(4096)\
+    groupmember VARCHAR(4096)\
     )charset utf8mb4";
     if(!exec_update(g))
     {
@@ -267,4 +267,26 @@ void DataBase::database_add_new_group(const std::string &groupname,const std::st
     }
 }
 
+void DataBase::database_update_group_member(const std::string &groupname,const std::string &username)
+{
+    std::string memberlist;
+    char sql[256]={0};
+    sprintf(sql,"SELECT groupmember FROM chat_group WHERE groupname='%s';",groupname.c_str());
+    MYSQL_ROW row;
+    if(!exec_query_and_fetch_row(sql,row))
+    {
+        LOG_ERROR("exec_query_and_fetch_row");
+        return;
+    }
+    if(row[0]==NULL)    return;
+    memberlist=row[0];
+    memberlist.append("|");
+    memberlist.append(username);
+    memset(sql,0,sizeof(sql));
+    sprintf(sql,"UPDATE chat_group SET groupmember='%s' WHERE groupname='%s';",memberlist.c_str(),groupname.c_str());
+    if(!exec_update(sql))
+    {
+        LOG_ERROR("exec_update");
+    }
+}
 
