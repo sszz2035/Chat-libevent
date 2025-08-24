@@ -99,6 +99,11 @@ void ChatThread::thread_readcb(struct bufferevent *bev, void *ctx)
     {
         t->thread_add_friend(bev, val);
     }
+    //处理私聊事件
+    else if(val["cmd"]=="private")
+    {
+        t->thread_private_chat(bev,val);
+    }
 }
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
@@ -314,11 +319,39 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
 
     // 修改数据库
     db->database_add_friend(v);
+    
     // 回复好友
+    val["cmd"]="be_addfriend";
+    val["friend"]=v["username"];
+    struct bufferevent* b=info->list_friend_online(v["friend"].asString());
+    if(b!=NULL) thread_write_data(b,val);
 
     // 回复客户端
-    //  val["cmd"]="addfriend_reply";
-    //  val["result"]="success";
-    //  thread_write_Data(bev,val);
-    //  db->database_disconnect();
+    val.clear();
+    val["cmd"]="addfriend_reply";
+    val["result"]="success";
+    thread_write_data(bev,val);
+
+    db->database_disconnect();
+}
+
+void ChatThread::thread_private_chat(struct bufferevent* bev,const Json::Value& v)
+{
+    std::string username=v["username"].asString();
+    std::string friendname=v["tofriend"].asString();
+    struct bufferevent* b=info->list_friend_online(friendname);
+    Json::Value val;
+    //如果好友不在线
+    if(b==NULL)
+    {
+        val["cmd"]="private_reply";
+        val["result"]="offline";
+        thread_write_data(bev,val);
+        return;
+    }
+    //好友在线
+    val["cmd"]="private";
+    val["fromfriend"]=username;
+    val["text"]=v["text"];
+    thread_write_data(b,val);
 }

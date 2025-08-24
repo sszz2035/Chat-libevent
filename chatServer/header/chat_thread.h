@@ -47,6 +47,7 @@ public:
      * @brief 处理读事件的回调函数
      * @param bev 对应事件 
      * @param ctx 传给回调函数的参数
+     * @details 处理注册、登录、添加好友、私聊等事件
     */
     static void thread_readcb(struct bufferevent *bev, void *ctx);
 
@@ -110,6 +111,13 @@ private:
      * @param v 客户端信息
     */
     void thread_add_friend(struct bufferevent* bev,const Json::Value& v);
+
+    /**
+     * @brief 处理私聊事件
+     * @param bev 发出请求的客户端事件
+     * @param v 私聊信息
+    */
+    void thread_private_chat(struct bufferevent* bev,const Json::Value& v);
 
     // 事件集合
     std::unique_ptr<struct event_base,EventBaseDeleter>base;
