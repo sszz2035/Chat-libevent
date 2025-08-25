@@ -88,5 +88,19 @@ public:
      * @note 使用此函数之前请确保群是已经存在的
     */
     bool list_member_is_group(const std::string& groupname,const std::string& username);
+
+    /**
+     * @brief 将新群成员user加入到group_info中，更新group_info中的群信息
+     * @param groupname 群名称
+     * @param username 用户名称
+    */
+    void list_update_group_member(const std::string &groupname,const std::string &username);
+
+    /**
+     * @brief 获取群的成员列表
+     * @param groupname 群名称
+     * @return 返回成员列表
+    */
+    std::list<std::string>&list_get_list(const std::string& groupname);  
 };
 #endif

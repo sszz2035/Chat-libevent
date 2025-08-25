@@ -120,3 +120,18 @@ bool ChatInfo::list_member_is_group(const std::string& groupname,const std::stri
     //不存在于群中
     else return false;
 }
+
+void ChatInfo::list_update_group_member(const std::string &groupname,const std::string &username)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);
+    auto it=group_info->find(groupname);
+    it->second.push_back(username);
+}
+
+std::list<std::string>& ChatInfo::list_get_list(const std::string& groupname)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);
+    return group_info->at(groupname);
+}

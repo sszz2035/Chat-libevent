@@ -16,7 +16,6 @@ src/data_base.cpp
 src/chat_thread.cpp)
 
 # pkg-config 查找MySQL库
-# find_package(MySQL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PC_MYSQL REQUIRED mysqlclient)
 

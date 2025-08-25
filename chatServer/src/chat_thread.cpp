@@ -420,7 +420,32 @@ void ChatThread::thread_join_group(struct bufferevent* bev,const Json::Value& v)
     //修改数据库
     db->database_connect();
     db->database_update_group_member(groupname,username);
-    db->database_disconnect(); 
+    db->database_disconnect();
+
     //更新链表中群信息
-    
+    info->list_update_group_member(groupname,username);
+
+    //向群中所有用户发送消息
+    std::list<std::string>l=info->list_get_list(groupname);
+    std::string member;
+    for(auto it=l.begin();it!=l.end();it++)
+    {
+        if(*it==username)   continue;
+        member.append(*it);
+        member.append("|");
+        struct bufferevent* b=info->list_friend_online(*it);
+        if(b==NULL) continue;
+        val["cmd"]="new_member_join";
+        val["groupname"]=groupname;
+        val["username"]=username;
+        thread_write_data(b,val);
+    }
+    //去掉最后的'|'
+    member.erase(member.size()-1);
+    val.clear();
+    //向自己发送消息
+    val["cmd"]="joingroup_reply";
+    val["result"]="success";
+    val["member"]=member;
+    thread_write_data(bev,val);
 }   
