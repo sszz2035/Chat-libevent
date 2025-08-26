@@ -114,6 +114,10 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
     {
         t->thread_join_group(bev,val);
     }
+    else if(val["cmd"]=="groupchat")
+    {   
+        t->thread_group_chat(bev,val);
+    }
 }
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
@@ -449,3 +453,25 @@ void ChatThread::thread_join_group(struct bufferevent* bev,const Json::Value& v)
     val["member"]=member;
     thread_write_data(bev,val);
 }   
+
+void ChatThread::thread_group_chat(struct bufferevent* bev,const Json::Value& v)
+{
+    std::string groupname=v["groupname"].asString();
+    std::string username=v["username"].asString();
+    std::string text=v["text"].asString();
+    //获取成员列表
+    std::list<std::string>member=info->list_get_list(groupname);
+    //将消息转发给群成员
+    for(auto it=member.begin();it!=member.end();it++)
+    {
+        if(*it==username)   continue;
+        struct bufferevent* b=info->list_friend_online(*it);
+        if(b==NULL) continue;
+        Json::Value val;
+        val["cmd"]="groupchat_reply";
+        val["groupname"]=groupname;
+        val["from"]=username;
+        val["text"]=text;
+        thread_write_data(b,val);
+    }
+}

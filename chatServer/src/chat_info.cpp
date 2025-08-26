@@ -135,3 +135,4 @@ std::list<std::string>& ChatInfo::list_get_list(const std::string& groupname)
     std::unique_lock<std::mutex>lock(map_mutex);
     return group_info->at(groupname);
 }
+
