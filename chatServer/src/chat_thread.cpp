@@ -124,10 +124,25 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
     {
         t->thread_transer_file(bev,val);
     }
+    //处理客户端下线事件
+    else if(val["cmd"]=="offline")
+    {
+        t->thread_client_offline(bev,val);
+    }
 }
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
 {
+    //客户端连接已关闭
+    if(events& BEV_EVENT_EOF)
+    {
+        std::cout<<"[disconnect] client offline"<<std::endl;
+        bufferevent_free(bev);
+    }
+    else
+    {
+        std::cout<<"Unknown Error"<<std::endl;
+    }
 }
 
 bool ChatThread::thread_read_data(struct bufferevent *bev, char *s)
@@ -271,7 +286,7 @@ void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
         if (b == NULL)
         {
             db->database_disconnect();
-            return;
+            continue;
         }
         Val.clear();
         Val["cmd"] = "online";
@@ -499,6 +514,7 @@ void ChatThread::thread_transer_file(struct bufferevent* bev,const Json::Value& 
         thread_write_data(bev,val);
         return;
     }
+    //对step判断
     if(step=="1")
     {
         val["cmd"]="file_name";
@@ -517,4 +533,39 @@ void ChatThread::thread_transer_file(struct bufferevent* bev,const Json::Value& 
         val["cmd"]="file_end";
     }   
     thread_write_data(b,val);
+}
+
+void ChatThread::thread_client_offline(struct bufferevent* bev,const Json::Value& v)
+{
+    std::string username=v["username"].asString();
+    
+    //删除info的online_user中的客户端事件
+    info->list_delete_user(username);
+
+    //释放客户端事件
+    bufferevent_free(bev);
+
+    //通知所有好友
+    std::string friendlist,grouplist;
+    db->database_connect();
+    //获取好友列表
+    db->database_get_friend_group(v,friendlist,grouplist);
+
+    db->database_disconnect();
+
+    std::string Friend[1024];
+
+    if(friendlist.empty())  return;
+    //将好友列表解析到Friend数组
+    int num=thread_parse_string(friendlist,Friend);
+    //通知所有好友
+    for(int i=0;i<num;i++)
+    {
+        struct bufferevent* b=info->list_friend_online(Friend[i]);
+        if(b==NULL) continue;
+        Json::Value val;
+        val["cmd"]="friend_offline";
+        val["username"]=username;
+        thread_write_data(b,val);
+    }
 }

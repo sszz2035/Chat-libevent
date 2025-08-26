@@ -26,15 +26,6 @@ public:
 /*服务器链表类*/
 class ChatInfo
 {
-private:
-    // 用于存放已登录的用户信息的链表
-    std::list<User> *online_user;
-    // 用于存放用户的群的信息
-    std::map<std::string, std::list<std::string>> *group_info;
-    // 访问在线用户的锁
-    std::mutex list_mutex;
-    // 访问群信息的锁
-    std::mutex map_mutex;
 
 public:
     ChatInfo();
@@ -102,5 +93,22 @@ public:
      * @return 返回成员列表
     */
     std::list<std::string>&list_get_list(const std::string& groupname);  
+
+    /**
+     * @brief 删除链表中用户结点
+     * @param username 要删除的用户名
+    */
+    void list_delete_user(const std::string& username);
+
+private:
+    // 用于存放已登录的用户信息的链表
+    std::list<User> *online_user;
+    // 用于存放用户的群的信息
+    std::map<std::string, std::list<std::string>> *group_info;
+    // 访问在线用户的锁
+    std::mutex list_mutex;
+    // 访问群信息的锁
+    std::mutex map_mutex;
+
 };
 #endif

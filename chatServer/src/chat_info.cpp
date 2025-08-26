@@ -136,3 +136,12 @@ std::list<std::string>& ChatInfo::list_get_list(const std::string& groupname)
     return group_info->at(groupname);
 }
 
+void ChatInfo::list_delete_user(const std::string& username)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(list_mutex);
+    auto it=std::find_if(online_user->begin(),online_user->end(),[username](const User& u)->bool{
+        return username==u.name;
+    });
+    if(it!=online_user->end())  online_user->erase(it);
+}

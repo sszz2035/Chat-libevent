@@ -149,6 +149,13 @@ private:
     */
     void thread_transer_file(struct bufferevent* bev,const Json::Value& v);
 
+    /**
+     * @brief 处理客户端下线事件
+     * @param bev 发出请求的客户端事件
+     * @param v 客户端信息
+    */
+    void thread_client_offline(struct bufferevent* bev,const Json::Value& v);
+
     // 事件集合
     std::unique_ptr<struct event_base,EventBaseDeleter>base;
     // 线程
