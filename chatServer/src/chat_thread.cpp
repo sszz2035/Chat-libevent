@@ -114,9 +114,15 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
     {
         t->thread_join_group(bev,val);
     }
+    //处理群聊事件
     else if(val["cmd"]=="groupchat")
     {   
         t->thread_group_chat(bev,val);
+    }
+    //处理文件传输事件
+    else if(val["cmd"]=="file")
+    {
+        t->thread_transer_file(bev,val);
     }
 }
 
@@ -474,4 +480,41 @@ void ChatThread::thread_group_chat(struct bufferevent* bev,const Json::Value& v)
         val["text"]=text;
         thread_write_data(b,val);
     }
+}
+
+void ChatThread::thread_transer_file(struct bufferevent* bev,const Json::Value& v)
+{
+    std::string username=v["username"].asString();
+    std::string friendname=v["friendname"].asString();
+    std::string filename=v["filename"].asString();
+    std::string filelength=v["filelength"].asString();
+    std::string step=v["step"].asString();
+    Json::Value val;
+    //判断对方是否在线
+    struct bufferevent* b=info->list_friend_online(friendname);
+    if(b==NULL)
+    {
+        val["cmd"]="file_reply";
+        val["result"]="offline";
+        thread_write_data(bev,val);
+        return;
+    }
+    if(step=="1")
+    {
+        val["cmd"]="file_name";
+        val["filename"]=filename;
+        val["filelength"]=filelength;
+        val["fromuser"]=username;
+    }   
+    else if(step=="2")
+    {
+        std::string text=v["text"].asString();
+        val["cmd"]="file_transfer";
+        val["text"]=text;
+    }
+    else if(step=="3")
+    {
+        val["cmd"]="file_end";
+    }   
+    thread_write_data(b,val);
 }
