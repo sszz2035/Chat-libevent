@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/C:\\qt-code\\trtr/**)",
+      "Read(/C:\\qt-code\\trtr/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

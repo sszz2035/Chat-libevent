@@ -1,0 +1,60 @@
+cmake_minimum_required(VERSION 3.19)
+project(chat_client LANGUAGES CXX)
+
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core)
+
+qt_standard_project_setup()
+
+qt_add_executable(chatclient
+    WIN32 MACOSX_BUNDLE
+    main.cpp
+    mainwindow.cpp
+    mainwindow.h
+
+    include/ElaWidgetTools.qrc
+    src/page-view/landpage.cpp src/page-view/landpage.h src/page-view/registerpage.cpp src/page-view/registerpage.h
+    src/utils/net-work/clientconserver.h src/utils/net-work/clientconserver.cpp
+
+
+
+)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+# set(CMAKE_AUTOUIC ON)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Network)
+
+target_link_libraries(chatclient
+    PRIVATE
+        Qt::Core
+        Qt::Widgets
+        ${CMAKE_CURRENT_SOURCE_DIR}/lib/ElaWidgetToolsd.lib
+)
+target_link_libraries(chatclient PRIVATE Qt6::Widgets)
+target_link_libraries(chatclient PRIVATE Qt6::Core Qt6::Network)
+
+include(GNUInstallDirs)
+
+include_directories(${Qt6Core_INCLUDE_DIRS} ${Qt6Network_INCLUDE_DIRS})
+include_directories(
+    include
+    include/private
+    src
+)
+install(TARGETS chatclient
+    BUNDLE  DESTINATION .
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+qt_generate_deploy_app_script(
+    TARGET chatclient
+    OUTPUT_SCRIPT deploy_script
+    NO_UNSUPPORTED_PLATFORM_ERROR
+)
+install(SCRIPT ${deploy_script})
