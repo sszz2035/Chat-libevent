@@ -38,10 +38,9 @@ void LandPage::destroyInstance()
     }
 }
 
-LandPage::~LandPage()
+void LandPage::isFreezeSignInBtn(bool enable)
 {
-    RegisterPage::destroyInstance();
-    LandPage::destroyInstance();
+    loginButton->setEnabled(!enable);
 }
 
 void LandPage::initUI()
@@ -144,6 +143,22 @@ void LandPage::setupLayout()
     
     // Connect register button signal
     connect(registerButton, &QPushButton::clicked, this, &LandPage::openRegisterPage);
+
+    //显示密码连接信号
+    connect(showPasswordCheck, &ElaCheckBox::toggled, this, [this](bool checked) {
+        passwordEdit->setEchoMode(checked ? QLineEdit::Normal : QLineEdit::Password);
+    });
+
+    //登录按键连接信号
+    connect(loginButton,&QPushButton::clicked,this,[=](){
+        if(!agreeTermsCheck->isChecked())
+        {
+            ElaMessageBar::error(ElaMessageBarType::Top,"⚠","请同意隐私和服务条款！",1500,this);
+            return;
+        }
+        isFreezeSignInBtn(true);
+
+    });
 }
 
 void LandPage::applyStyles()

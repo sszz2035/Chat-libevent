@@ -17,16 +17,20 @@
 #include<ElaComboBox.h>
 #include<ElaCheckBox.h>
 #include<ElaLineEdit.h>
+#include<ElaMessageBar.h>
 #include "registerpage.h"
+#include<utils/net-work/clientconserver.h>
+
 class LandPage : public QWidget
 {
     Q_OBJECT
 
 public:
     static LandPage* getInstance();
-    ~LandPage();
 
     static void destroyInstance();
+
+    void isFreezeSignInBtn(bool enable);
 
 public slots:
     void closeWindow();
@@ -46,7 +50,10 @@ protected:
 
 private:
     explicit LandPage(QWidget *parent = nullptr);
-    
+    LandPage(const LandPage&);
+    ~LandPage(){}
+    LandPage& operator=(const LandPage&);
+
     // UI Components
     QGridLayout *mainLayout;
     QHBoxLayout *bottomLayout;

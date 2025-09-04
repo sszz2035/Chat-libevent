@@ -16,6 +16,29 @@ qt_add_executable(chatclient
     include/ElaWidgetTools.qrc
     src/page-view/landpage.cpp src/page-view/landpage.h src/page-view/registerpage.cpp src/page-view/registerpage.h
     src/utils/net-work/clientconserver.h src/utils/net-work/clientconserver.cpp
+    src/page-view/archpage.h src/page-view/archpage.cpp
+    src/page-view/addpage.h src/page-view/addpage.cpp
+    src/page-view/effect-component/ssmaskwidget.h src/page-view/effect-component/ssmaskwidget.cpp
+    src/page-view/effect-component/loadingdialog.h src/page-view/effect-component/loadingdialog.cpp
+    src/page-view/creategrouppage.h src/page-view/creategrouppage.cpp
+    src/page-view/contactpage.h src/page-view/contactpage.cpp
+    src/page-view/noticepage.h src/page-view/noticepage.cpp
+    src/page-view/contactdelegate.h src/page-view/contactdelegate.cpp
+    src/page-view/contactmodel.h src/page-view/contactmodel.cpp
+    src/page-view/aboutpage.h src/page-view/aboutpage.cpp
+    src/page-view/messagepage.h src/page-view/messagepage.cpp
+    src/page-view/conversationpage.h src/page-view/conversationpage.cpp
+    src/page-view/effect-component/msg-bubble/msgbubblemodel.h src/page-view/effect-component/msg-bubble/msgbubblemodel.cpp
+    src/page-view/effect-component/msg-bubble/msgbubbledelegate.h src/page-view/effect-component/msg-bubble/msgbubbledelegate.cpp
+    src/page-view/effect-component/msg-bubble/msgbubbleview.h src/page-view/effect-component/msg-bubble/msgbubbleview.cpp
+    src/page-view/screenshotpage.h src/page-view/screenshotpage.cpp
+    src/page-view/emojipickerpage.h src/page-view/emojipickerpage.cpp
+    src/page-view/groupmemberdock.h src/page-view/groupmemberdock.cpp
+    src/page-view/userpage.h src/page-view/userpage.cpp
+    src/page-view/editinfopage.h src/page-view/editinfopage.cpp
+    src/page-view/define.h
+
+
 
 
 
@@ -28,6 +51,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Network)
+find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 target_link_libraries(chatclient
     PRIVATE
@@ -37,6 +62,8 @@ target_link_libraries(chatclient
 )
 target_link_libraries(chatclient PRIVATE Qt6::Widgets)
 target_link_libraries(chatclient PRIVATE Qt6::Core Qt6::Network)
+target_link_libraries(chatclient PRIVATE Qt6::Core)
+target_link_libraries(chatclient PRIVATE Qt6::Widgets)
 
 include(GNUInstallDirs)
 

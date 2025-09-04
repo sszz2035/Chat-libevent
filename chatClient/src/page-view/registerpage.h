@@ -12,6 +12,9 @@
 #include <QPainter>
 #include <QMouseEvent>
 #include <QPoint>
+#include<QJsonObject>
+#include<utils/net-work/clientconserver.h>
+#include<ElaMessageBar.h>
 #include <ElaLineEdit.h>
 #include <ElaCheckBox.h>
 #include <ElaComboBox.h>
@@ -22,14 +25,13 @@ class RegisterPage : public QWidget
 
 public:
     static RegisterPage* getInstance();
-    ~RegisterPage();
 
     static void destroyInstance();
 
 public slots:
     void closeWindow();
     void returnToLogin();
-
+    void registerButtonClicked();
 signals:
     void backToLoginRequested();
 
@@ -47,7 +49,9 @@ protected:
 
 private:
     explicit RegisterPage(QWidget *parent = nullptr);
-    
+    RegisterPage(const RegisterPage&);
+    ~RegisterPage(){}
+    RegisterPage& operator=(const RegisterPage&);
     // UI Components
     QGridLayout *mainLayout;
     QHBoxLayout *bottomLayout;

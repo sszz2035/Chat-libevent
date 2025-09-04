@@ -37,9 +37,6 @@ void RegisterPage::destroyInstance()
     }
 }
 
-RegisterPage::~RegisterPage()
-{
-}
 
 void RegisterPage::initUI()
 {
@@ -166,6 +163,8 @@ void RegisterPage::setupLayout()
         passwordEdit->setEchoMode(checked ? QLineEdit::Normal : QLineEdit::Password);
         confirmPasswordEdit->setEchoMode(checked ? QLineEdit::Normal : QLineEdit::Password);
     });
+
+    connect(registerButton,&QPushButton::clicked,this,&RegisterPage::registerButtonClicked);
 }
 
 void RegisterPage::applyStyles()
@@ -330,4 +329,26 @@ void RegisterPage::returnToLogin()
 {
     emit backToLoginRequested();
     hide();
+}
+
+void RegisterPage::registerButtonClicked()
+{
+    QString userName=usernameEdit->text();
+    QString passWord=passwordEdit->text();
+    if(userName.isEmpty())
+    {
+        ElaMessageBar::error(ElaMessageBarType::TopRight,"⚠","请输入用户名！",1000,this);
+        return;
+    }
+    if(passWord.isEmpty()||confirmPasswordEdit->text().isEmpty())
+    {
+        ElaMessageBar::error(ElaMessageBarType::Right,"⚠","请输入密码！",1000,this);
+        return;
+    }
+    QJsonObject obj;
+    obj["cmd"]="register";
+    obj["username"]=userName;
+    obj["password"]=passWord;
+
+    ClientConServer::getInstance()->clinet_write_data(obj);
 }
