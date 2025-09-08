@@ -36,13 +36,14 @@ class ArchPage : public ElaWindow{
     Q_OBJECT
 signals:
     void sigJumpOtherPageRequest(PageName pageName);
+    void sigTriggerUpdate(UserInfo* info);
 public:
     static ArchPage * getInstance();
     static void destroyInstance();
     void setInstanceParent(QObject * parent);
     void setUserInfo(UserInfo *info);
 public slots:
-    void sltTriggerUpdate();
+    void sltTriggerUpdate(UserInfo* info);
 
     void sltShowMaskEffect();
     void sltHideMaskEffect();

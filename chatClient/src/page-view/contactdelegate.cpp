@@ -140,9 +140,9 @@ void ContactDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
     QRect usernameRect(avatarRect.right() + 10, myOption.rect.top() + 10, myOption.rect.width() - avatarRect.width() - 20, fm.height());
     painter->drawText(usernameRect, Qt::AlignLeft | Qt::AlignVCenter, username);
     painter->setFont(fontOld);
-    //    QString alias = "";
-    //    painter->setPen(Qt::black);
-    //    painter->drawText(usernameRect, Qt::AlignLeft | Qt::AlignVCenter, alias);
+       QString alias = "";
+       painter->setPen(Qt::black);
+       painter->drawText(usernameRect, Qt::AlignLeft | Qt::AlignVCenter, alias);
 
     // 绘制状态
     QString status = index.data(ContactDelegate::StatusRole).toString();

@@ -8,12 +8,12 @@ class LoginVerify
 {
 public:
     explicit LoginVerify();
-    void setUserName(const QString& name);
+    void setSsid(const int& ssid);
     void setPassWord(const QString& password);
     void verifyServer();
 
 private:
-    QString userName;
+    int ssid;
     QString passWord;
 };
 

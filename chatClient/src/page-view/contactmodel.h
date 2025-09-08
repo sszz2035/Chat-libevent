@@ -10,8 +10,8 @@
 struct GroupingItem{
     QString ssid;
     QString name;
-    QString mark;
-    QString details;
+    // QString mark;
+    // QString details;
     QString status;
     QString picPath;
 
@@ -68,6 +68,7 @@ private:
                            const QString &newGroup,
                            const GroupingItem &item);
 private:
+    //分组列表所对应的联系人列表
     QMap<QString,QList<QPair<QStandardItem*,GroupingItem>>> _itemMap;
     QHash<QString,QStandardItem*> _groupingHash;
 };

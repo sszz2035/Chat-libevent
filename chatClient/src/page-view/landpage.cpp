@@ -22,6 +22,7 @@ LandPage::LandPage(QWidget *parent)
     // Set frameless window
     setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
     setAttribute(Qt::WA_TranslucentBackground);
+    connect(this,&LandPage::sigTriggerUpdate,ArchPage::getInstance(),&ArchPage::sltTriggerUpdate);
 }
 
 LandPage* LandPage::getInstance()
@@ -73,14 +74,16 @@ void LandPage::login_handler(QJsonObject &obj)
     }
     else if(obj.value("result").toString()=="success")
     {
+        int ssid=obj["uid"].toInt();
         QString friList=obj["friendlist"].toString();
         QString groList=obj["grouplist"].toString();
         UserInfo* info=new UserInfo();
-        info->_name=usernameCombo->currentText();
+        info->_ssid=ssid;
+        info->_name=obj["username"].toString();
         info->_friList=friList;
         info->_groList=groList;
         info->_type=Myself;
-        ArchPage::getInstance()->setUserInfo(info);
+        emit(sigTriggerUpdate(info));
         ElaMessageBar::success(ElaMessageBarType::Top,"✅","登录成功！",1000,this);
         QTimer::singleShot(1500, this, [this]() {
             hide();
@@ -410,7 +413,7 @@ void LandPage::loginButtonClicked()
     }
     isFreezeSignInBtn(true);
     LoginVerify login;
-    login.setUserName(usernameCombo->currentText());
+    login.setSsid(usernameCombo->currentText().toInt());
     login.setPassWord(passwordEdit->text());
     login.verifyServer();
 }

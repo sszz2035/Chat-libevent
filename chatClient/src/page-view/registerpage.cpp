@@ -1,9 +1,9 @@
 #include "registerpage.h"
+#include "ElaWidget.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QMessageBox>
 #include <QGraphicsDropShadowEffect>
-
 RegisterPage* RegisterPage::instance = nullptr;
 
 RegisterPage::RegisterPage(QWidget *parent)
@@ -46,6 +46,11 @@ void RegisterPage::register_handler(QJsonObject &obj)
     else if(obj["result"]=="success")
     {
         ElaMessageBar::success(ElaMessageBarType::Top,"✅","注册成功",1000,this);
+        QString text="你的用户id为：";
+        qDebug()<<obj["uid"];
+        QJsonValue val=obj["uid"];
+        text.append(QString::number(val.toInt()));
+        ElaMessageBar::success(ElaMessageBarType::Top,"✅",text,0x7f7f7f7f,this);
     }
 }
 

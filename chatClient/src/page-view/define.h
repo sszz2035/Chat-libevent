@@ -55,7 +55,7 @@ struct UserInfo{
     UserType    _type;
     int         _joinDay = 0;
     int         _likeCount = 0;
-    QString     _ssid;
+    int         _ssid;
     QString     _name;
     QString     _remark;
     QString     _signContent;
@@ -65,7 +65,7 @@ struct UserInfo{
     QString     _friList;
     QString     _groList;
     bool isEmpty() const {
-        if(_ssid.isEmpty() && _name.isEmpty() &&
+        if( _name.isEmpty() &&
             _remark.isEmpty() && _signContent.isEmpty())
             return true;
         return false;
@@ -79,7 +79,7 @@ struct GroupNotice {
 
 struct GroupInfo{
     UserType            _type;
-    QString             _ssid;
+    int                  _ssid;
     QString             _name;
     QString             _remark;
     QString             _resume;
@@ -87,7 +87,7 @@ struct GroupInfo{
     int                 _memberCount;
     QList<GroupNotice>  _notices;
     bool isEmpty() const {
-        if(_ssid.isEmpty() && _name.isEmpty() &&
+        if( _name.isEmpty() &&
             _remark.isEmpty() && _picPath.isEmpty())
             return true;
         return false;

@@ -2,9 +2,9 @@
 
 LoginVerify::LoginVerify() {}
 
-void LoginVerify::setUserName(const QString &name)
+void LoginVerify::setSsid(const int &ssid)
 {
-    userName=name;
+    this->ssid=ssid;
 }
 
 void LoginVerify::setPassWord(const QString &password)
@@ -16,7 +16,7 @@ void LoginVerify::verifyServer()
 {
     QJsonObject obj;
     obj.insert("cmd","login");
-    obj.insert("username",userName);
+    obj.insert("uid",ssid);
     obj.insert("password",passWord);
     ClientConServer::getInstance()->clinet_write_data(obj);
 }

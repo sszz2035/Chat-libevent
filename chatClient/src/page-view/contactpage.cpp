@@ -141,6 +141,9 @@ ContactPage::ContactPage(QWidget *parent) : ElaScrollPage(parent) {
     initContent();
 
     initConnectFunc();
+
+    _friendModel->addGrouping("303");
+    _friendModel->addGroupingItem("303",{"1","阿旺","online",":/include/Image/Cirno.jpg"});
 }
 ContactPage::~ContactPage() {
     _noticePage->deleteLater();
@@ -211,7 +214,6 @@ void ContactPage::initContent() {
     ContactDelegate * gDelegate = new ContactDelegate(this);
     gDelegate->setGroupFlag();
 
-    _groupModel->delGrouping("我的好友");
     _groupModel->addGrouping("未命名群聊");
     _groupModel->addGrouping("我创建的群聊");
     _groupModel->addGrouping("我管理的群聊");
@@ -224,6 +226,7 @@ void ContactPage::initContent() {
     _friendTree->setSelectionMode(QAbstractItemView::SingleSelection);
     _friendTree->setDropIndicatorShown(true);
     _friendTree->setItemDelegate(fDelegate);
+    //禁止用户编辑
     _friendTree->setEditTriggers(QTreeView::NoEditTriggers);
 
     _groupTree->hide();
@@ -241,6 +244,7 @@ void ContactPage::initContent() {
     _friendTree->setAutoFillBackground(false);
     _friendTree->viewport()->setAutoFillBackground(false);
 
+    //添加分组信号
     connect(fDelegate, &ContactDelegate::sigAddGrouping,this,[=](const QString& groupingName) {
         _friendModel->addGrouping(groupingName);
     });

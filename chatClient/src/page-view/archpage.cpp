@@ -6,6 +6,7 @@
 #include "aboutpage.h"
 #include "messagepage.h"
 #include "contactpage.h"
+#include"landpage.h"
 // #include "../settings-page/SettingsPage.h"
 // #include "../file-manager-page/FileManagerPage.h"
 // #include "../user-page/UserPage.h"
@@ -53,6 +54,7 @@ void ArchPage::destroyInstance() {
 
 void ArchPage::setUserInfo(UserInfo *info)
 {
+    userInfo->_ssid=info->_ssid;
     userInfo->_name=info->_name;
     userInfo->_friList=info->_friList;
     userInfo->_groList=info->_groList;
@@ -60,7 +62,7 @@ void ArchPage::setUserInfo(UserInfo *info)
 }
 
 //更新用户卡片
-void ArchPage::sltTriggerUpdate() {
+void ArchPage::sltTriggerUpdate(UserInfo* info) {
     // UserBaseInfoDTO udto = g_pCommonData->getCurUserInfo();
     // if (udto.username.isEmpty() || udto.username == "-1") {
         // setUserInfoCardTitle("{NULL}");
@@ -77,7 +79,9 @@ void ArchPage::sltTriggerUpdate() {
     // } else {
     //     setUserInfoCardSubTitle(udto.ssid);
     // }
+    setUserInfo(info);
     setUserInfoCardTitle(userInfo->_name);
+    setUserInfoCardSubTitle(QString::number(userInfo->_ssid));
     setUserInfoCardPixmap(QPixmap(":/include/Image/Cirno.jpg"));
 }
 
@@ -159,7 +163,6 @@ void ArchPage::initWindow() {
     _loadingDialog->setVisible(false);
 
     // init arch user pic and user name
-    sltTriggerUpdate();
 }
 
 void ArchPage::initEdgeLayout() {

@@ -18,6 +18,7 @@
 #include<ElaCheckBox.h>
 #include<ElaLineEdit.h>
 #include<ElaMessageBar.h>
+#include "define.h"
 #include "registerpage.h"
 #include<utils/net-work/clientconserver.h>
 
@@ -33,7 +34,8 @@ public:
     void isFreezeSignInBtn(bool enable);
 
     void login_handler(QJsonObject& obj);
-
+signals:
+    void sigTriggerUpdate(UserInfo* info);
 private slots:
     void closeWindow();
     void openRegisterPage();

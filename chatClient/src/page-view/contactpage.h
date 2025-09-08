@@ -55,6 +55,7 @@ public:
 
 public slots:
     // void addContactInfo(const QString& groupingName,const MsgCombineDTO &info);
+
 signals:
     // void sigTriggerAddMsgCard(const MsgCombineDTO &info);
     void sigTriggerAddToCreateGroupList(const UserBaseInfoDTO &dto);
