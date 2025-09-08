@@ -1,7 +1,3 @@
-//
-// Created by FU-QAQ on 2024/12/11.
-//
-
 #include "contactpage.h"
 #include "contactdelegate.h"
 #include "contactmodel.h"
@@ -9,8 +5,6 @@
 #include "ElaTreeView.h"
 #include "ElaToolButton.h"
 #include "ElaPivot.h"
-
-// #include "common-data/CommonData.h"
 
 #include <QHeaderView>
 #include <QVBoxLayout>
@@ -217,6 +211,7 @@ void ContactPage::initContent() {
     ContactDelegate * gDelegate = new ContactDelegate(this);
     gDelegate->setGroupFlag();
 
+    _groupModel->delGrouping("我的好友");
     _groupModel->addGrouping("未命名群聊");
     _groupModel->addGrouping("我创建的群聊");
     _groupModel->addGrouping("我管理的群聊");

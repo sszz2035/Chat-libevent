@@ -28,6 +28,7 @@ public:
 
     static void destroyInstance();
 
+    void register_handler(QJsonObject& obj);
 public slots:
     void closeWindow();
     void returnToLogin();

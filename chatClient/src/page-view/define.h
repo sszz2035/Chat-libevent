@@ -62,6 +62,8 @@ struct UserInfo{
     QString     _picPath;
     LocalInfo   _localInfo;
     QString     _sex;
+    QString     _friList;
+    QString     _groList;
     bool isEmpty() const {
         if(_ssid.isEmpty() && _name.isEmpty() &&
             _remark.isEmpty() && _signContent.isEmpty())

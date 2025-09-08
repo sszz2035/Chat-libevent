@@ -9,9 +9,9 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     ElaApplication::getInstance()->init();
     LandPage::getInstance()->show();
+    ClientConServer::getInstance()->connectToServer();
     // MainWindow w;
     // w.show();
-    ArchPage::getInstance()->show();
-    ClientConServer::getInstance()->connectToServer();
+    // ArchPage::getInstance()->show();
     return a.exec();
 }

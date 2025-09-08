@@ -1,7 +1,3 @@
-//
-// Created by FU-QAQ on 2024/9/10.
-//
-
 #include "ArchPage.h"
 #include "addpage.h"
 #include "creategrouppage.h"
@@ -23,6 +19,7 @@
 #include "ElaSuggestBox.h"
 #include "ElaMenu.h"
 
+#include <QFile>
 #include <QHBoxLayout>
 #include <QResizeEvent>
 #include <mutex>
@@ -54,24 +51,35 @@ void ArchPage::destroyInstance() {
     }
 }
 
-// void ArchPage::sltTriggerUpdate() {
-//     UserBaseInfoDTO udto = g_pCommonData->getCurUserInfo();
-//     if (udto.username.isEmpty() || udto.username == "-1") {
-//         setUserInfoCardTitle("{NULL}");
-//     } else {
-//         setUserInfoCardTitle(udto.username);
-//     }
-//     if (udto.avatarPath.isEmpty() || udto.avatarPath == "-1") {
-//         setUserInfoCardPixmap(QPixmap(":/arch-page/rc-page/img/SS-default-icon.jpg"));
-//     } else {
-//         setUserInfoCardPixmap(udto.avatarPath);
-//     }
-//     if (udto.ssid.isEmpty() || udto.ssid == "-1") {
-//         setUserInfoCardSubTitle("{NULL}");
-//     } else {
-//         setUserInfoCardSubTitle(udto.ssid);
-//     }
-// }
+void ArchPage::setUserInfo(UserInfo *info)
+{
+    userInfo->_name=info->_name;
+    userInfo->_friList=info->_friList;
+    userInfo->_groList=info->_groList;
+    userInfo->_type=info->_type;
+}
+
+//更新用户卡片
+void ArchPage::sltTriggerUpdate() {
+    // UserBaseInfoDTO udto = g_pCommonData->getCurUserInfo();
+    // if (udto.username.isEmpty() || udto.username == "-1") {
+        // setUserInfoCardTitle("{NULL}");
+    // } else {
+        // setUserInfoCardTitle(udto.username);
+    // }
+    // if (udto.avatarPath.isEmpty() || udto.avatarPath == "-1") {
+    //     setUserInfoCardPixmap(QPixmap(":/arch-page/rc-page/img/SS-default-icon.jpg"));
+    // } else {
+    //     setUserInfoCardPixmap(udto.avatarPath);
+    // }
+    // if (udto.ssid.isEmpty() || udto.ssid == "-1") {
+    //     setUserInfoCardSubTitle("{NULL}");
+    // } else {
+    //     setUserInfoCardSubTitle(udto.ssid);
+    // }
+    setUserInfoCardTitle(userInfo->_name);
+    setUserInfoCardPixmap(QPixmap(":/include/Image/Cirno.jpg"));
+}
 
 void ArchPage::sltShowMaskEffect() {
     _maskWidget->setVisible(true);
@@ -94,7 +102,7 @@ void ArchPage::sltHideLoading() {
     sltHideMaskEffect();
 }
 
-ArchPage::ArchPage(QWidget *parent) : ElaWindow(parent) {
+ArchPage::ArchPage(QWidget *parent) : ElaWindow(parent),userInfo(new UserInfo()) {
     initWindow();
 
     initEdgeLayout();
@@ -123,6 +131,8 @@ ArchPage::~ArchPage() {
     _addPage = nullptr;
     delete _createGroupPage;
     _createGroupPage = nullptr;
+    delete userInfo;
+    userInfo=nullptr;
 }
 
 void ArchPage::initWindow() {
@@ -149,7 +159,7 @@ void ArchPage::initWindow() {
     _loadingDialog->setVisible(false);
 
     // init arch user pic and user name
-    // sltTriggerUpdate();
+    sltTriggerUpdate();
 }
 
 void ArchPage::initEdgeLayout() {
@@ -179,7 +189,7 @@ void ArchPage::initEdgeLayout() {
 }
 
 void ArchPage::initContent() {
-    // message page
+    // message page 第三个参数是消息条数
     addPageNode("Message", g_pMessagePage, _msgNoticeNum, ElaIconType::Comment);
 
     // contact page
@@ -265,35 +275,36 @@ void ArchPage::initConnectFunc() {
     // // refresh data
     // connect(g_pCommonData,&CommonData::sigUpdateAvatarData,this,&ArchPage::sltTriggerUpdate);
 
-    // // add friend
-    // connect(_addAction,&QAction::triggered,this,[=]() {
-    //     sltShowMaskEffect();
-    //     _addPage->show();
-    // });
+    // add friend
+    connect(_addAction,&QAction::triggered,this,[=]() {
+        sltShowMaskEffect();
+        _addPage->show();
+    });
 
     // // add page request mask effect
-    // connect(_addPage,&AddPage::sigHideArchPageMaskEffect,this,&ArchPage::sltHideMaskEffect);
+    connect(_addPage,&AddPage::sigHideArchPageMaskEffect,this,&ArchPage::sltHideMaskEffect);
 
     // // create group
-    // connect(_createAction,&QAction::triggered,this,[=]() {
-    //     if (_createGroupPage == nullptr) {
-    //         _createGroupPage = new CreateGroupPage();
-    //         // create group page request mask effect
-    //         connect(_createGroupPage,&CreateGroupPage::sigHideArchPageMaskEffect,this,&ArchPage::sltHideMaskEffect);
-    //     }
+    connect(_createAction,&QAction::triggered,this,[=]() {
+        if (_createGroupPage == nullptr) {
+            _createGroupPage = new CreateGroupPage();
+            // create group page request mask effect
+            connect(_createGroupPage,&CreateGroupPage::sigHideArchPageMaskEffect,this,&ArchPage::sltHideMaskEffect);
+        }
 
-    //     sltShowMaskEffect();
-    //     _createGroupPage->show();
-    // });
+        sltShowMaskEffect();
+        _createGroupPage->show();
+    });
 
-    // connect(this,&ArchPage::sigJumpOtherPageRequest,this,[=](PageName pageName) {
-    //     switch (pageName) {
-    //     case MessagePage:
-    //         navigation(g_pMessagePage->property("ElaPageKey").toString());
-    //         break;
-    //     case ContactPage:
-    //         navigation(g_pContactPage->property("ElaPageKey").toString());
-    //         break;
+    connect(this,&ArchPage::sigJumpOtherPageRequest,this,[=](PageName pageName) {
+        switch (pageName) {
+        case MessagePage:
+            //根据pagekey跳转到不同的界面
+            navigation(g_pMessagePage->property("ElaPageKey").toString());
+            break;
+        case ContactPage:
+            navigation(g_pContactPage->property("ElaPageKey").toString());
+            break;
     //     case LLMPage:
     //         navigation(g_pLLMAppPage->property("ElaPageKey").toString());
     //         break;
@@ -303,8 +314,8 @@ void ArchPage::initConnectFunc() {
     //     case SettingsPage:
     //         navigation(g_pSettingsPage->property("ElaPageKey").toString());
     //         break;
-    //     }
-    // });
+        }
+    });
 
     connect(g_pContactPage,&ContactPage::sigHideArchPageMaskEffect,this,&ArchPage::sltHideMaskEffect);
     connect(g_pContactPage,&ContactPage::sigShowArchPageMaskEffect,this,&ArchPage::sltShowMaskEffect);

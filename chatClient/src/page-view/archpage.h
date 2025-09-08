@@ -1,7 +1,7 @@
 #ifndef SYNERGYSPOT_ARCHPAGE_H
 #define SYNERGYSPOT_ARCHPAGE_H
 
-// #include "define.h"
+#include "define.h"
 #include "ElaWindow.h"
 #include "ElaWidget.h"
 class ElaContentDialog;
@@ -40,9 +40,9 @@ public:
     static ArchPage * getInstance();
     static void destroyInstance();
     void setInstanceParent(QObject * parent);
-
+    void setUserInfo(UserInfo *info);
 public slots:
-    // void sltTriggerUpdate();
+    void sltTriggerUpdate();
 
     void sltShowMaskEffect();
     void sltHideMaskEffect();
@@ -88,6 +88,8 @@ private:
     static ArchPage * _obj;
     SSMaskWidget  *_maskWidget;
     LoadingDialog *_loadingDialog;
+
+    UserInfo* userInfo;
 };
 
 #endif //SYNERGYSPOT_ARCHPAGE_H

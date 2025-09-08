@@ -32,10 +32,12 @@ public:
 
     void isFreezeSignInBtn(bool enable);
 
-public slots:
+    void login_handler(QJsonObject& obj);
+
+private slots:
     void closeWindow();
     void openRegisterPage();
-
+    void loginButtonClicked();
 private:
     void initUI();
     void setupLayout();

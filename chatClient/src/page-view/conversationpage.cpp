@@ -286,20 +286,20 @@ void InputWidget::initConnectFunc() {
         emit _sendButton->click();
     });
 }
+ConversationFriendPage::ConversationFriendPage(const QString& userInfo,QWidget *parent)
+    : QWidget(parent)
+{
+    _userInfo = userInfo;
 
-// ConversationFriendPage::ConversationFriendPage(const UserBaseInfoDTO& userInfo,QWidget *parent)
-//     : QWidget(parent)
-// {
-//     _userInfo = userInfo;
+    initWindow();
 
-//     initWindow();
+    initEdgeLayout();
 
-//     initEdgeLayout();
+    initContent();
 
-//     initContent();
+    initConnectFunc();
+}
 
-//     initConnectFunc();
-// }
 
 ConversationFriendPage::~ConversationFriendPage(){}
 
@@ -310,7 +310,7 @@ void ConversationFriendPage::scrollMsgViewToBottom() {
 }
 
 void ConversationFriendPage::insertMsgBubble(const ChatMessage& msg) const {
-    // _msgBubbleModel->addMsg(msg);
+    _msgBubbleModel->addMsg(msg);
     QTimer::singleShot(100,this,[=]() {
         _msgListView->scrollToBottom();
     });

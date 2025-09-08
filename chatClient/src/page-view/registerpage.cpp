@@ -37,6 +37,18 @@ void RegisterPage::destroyInstance()
     }
 }
 
+void RegisterPage::register_handler(QJsonObject &obj)
+{
+    if(obj["result"]=="user_exist")
+    {
+        ElaMessageBar::error(ElaMessageBarType::Top,"⚠","用户已存在",1000,this);
+    }
+    else if(obj["result"]=="success")
+    {
+        ElaMessageBar::success(ElaMessageBarType::Top,"✅","注册成功",1000,this);
+    }
+}
+
 
 void RegisterPage::initUI()
 {
@@ -335,6 +347,11 @@ void RegisterPage::registerButtonClicked()
 {
     QString userName=usernameEdit->text();
     QString passWord=passwordEdit->text();
+    if(!agreeTermsCheck->isChecked())
+    {
+        ElaMessageBar::error(ElaMessageBarType::Top,"⚠","请同意隐私和服务条款！",1000,this);
+        return;
+    }
     if(userName.isEmpty())
     {
         ElaMessageBar::error(ElaMessageBarType::TopRight,"⚠","请输入用户名！",1000,this);
@@ -343,6 +360,11 @@ void RegisterPage::registerButtonClicked()
     if(passWord.isEmpty()||confirmPasswordEdit->text().isEmpty())
     {
         ElaMessageBar::error(ElaMessageBarType::Right,"⚠","请输入密码！",1000,this);
+        return;
+    }
+    if(passWord!=confirmPasswordEdit->text())
+    {
+        ElaMessageBar::error(ElaMessageBarType::Right,"⚠","两次输入的密码不一致！",1000,this);
         return;
     }
     QJsonObject obj;

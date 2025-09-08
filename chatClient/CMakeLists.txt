@@ -6,6 +6,10 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt_standard_project_setup()
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+# set(CMAKE_AUTOUIC ON)
+
 
 qt_add_executable(chatclient
     WIN32 MACOSX_BUNDLE
@@ -37,15 +41,15 @@ qt_add_executable(chatclient
     src/page-view/userpage.h src/page-view/userpage.cpp
     src/page-view/editinfopage.h src/page-view/editinfopage.cpp
     src/page-view/define.h
-
-
-
+    src/core/loginverify.h src/core/loginverify.cpp
 
 
 )
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-# set(CMAKE_AUTOUIC ON)
+
+#添加资源文件
+# qt6_add_resources(chatclient
+#     FILES include/ElaWidgetTools.qrc
+# )
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

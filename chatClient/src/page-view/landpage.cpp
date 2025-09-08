@@ -3,8 +3,10 @@
 #include <QPainterPath>
 #include <QFile>
 #include <QTextStream>
-#include <QMessageBox>
 #include <QGraphicsDropShadowEffect>
+#include"core/loginverify.h"
+#include"page-view/archpage.h"
+#include<QTimer>
 LandPage* LandPage::instance = nullptr;
 
 LandPage::LandPage(QWidget *parent)
@@ -40,7 +42,52 @@ void LandPage::destroyInstance()
 
 void LandPage::isFreezeSignInBtn(bool enable)
 {
+    // if(enable)
+    // {
+    //     loginButton->setStyleSheet("QPushButton{"
+    //                                "background-color: grey;"
+    //                                "color: black;"
+    //                                "}");
+    // }
+    // else
+    // {
+    //     loginButton->setStyleSheet("QPushButton{"
+    //                                "background-color: #12B7F5;"
+    //                                "color: white;"
+    //                                "}");
+    // }
     loginButton->setEnabled(!enable);
+}
+
+void LandPage::login_handler(QJsonObject &obj)
+{
+    if(obj.value("result").toString()=="not_exist")
+    {
+        ElaMessageBar::error(ElaMessageBarType::Top,"⚠","用户不存在！",1000,this);    isFreezeSignInBtn(true);
+        isFreezeSignInBtn(false);
+    }
+    else if(obj.value("result").toString()=="password_error")
+    {
+        ElaMessageBar::error(ElaMessageBarType::Top,"⚠","密码错误！",1000,this);
+        isFreezeSignInBtn(false);
+    }
+    else if(obj.value("result").toString()=="success")
+    {
+        QString friList=obj["friendlist"].toString();
+        QString groList=obj["grouplist"].toString();
+        UserInfo* info=new UserInfo();
+        info->_name=usernameCombo->currentText();
+        info->_friList=friList;
+        info->_groList=groList;
+        info->_type=Myself;
+        ArchPage::getInstance()->setUserInfo(info);
+        ElaMessageBar::success(ElaMessageBarType::Top,"✅","登录成功！",1000,this);
+        QTimer::singleShot(1500, this, [this]() {
+            hide();
+            ArchPage::getInstance()->show();
+            destroyInstance();
+        });
+    }
 }
 
 void LandPage::initUI()
@@ -90,6 +137,8 @@ void LandPage::initUI()
     //创建登录按钮
     loginButton = new QPushButton("登录", this);
     loginButton->setFixedSize(260, 40);
+    loginButton->setEnabled(false);//默认冻结按钮
+
 
     //创建注册按钮
     registerButton = new QPushButton("注册账号", this);
@@ -150,15 +199,7 @@ void LandPage::setupLayout()
     });
 
     //登录按键连接信号
-    connect(loginButton,&QPushButton::clicked,this,[=](){
-        if(!agreeTermsCheck->isChecked())
-        {
-            ElaMessageBar::error(ElaMessageBarType::Top,"⚠","请同意隐私和服务条款！",1500,this);
-            return;
-        }
-        isFreezeSignInBtn(true);
-
-    });
+    connect(loginButton,&QPushButton::clicked,this,&LandPage::loginButtonClicked);
 }
 
 void LandPage::applyStyles()
@@ -348,4 +389,28 @@ void LandPage::openRegisterPage()
     RegisterPage::getInstance()->show();
     RegisterPage::getInstance()->raise(); // 确保窗口在最前面
     RegisterPage::getInstance()->activateWindow(); // 激活窗口
+}
+
+void LandPage::loginButtonClicked()
+{
+    if(!agreeTermsCheck->isChecked())
+    {
+        ElaMessageBar::error(ElaMessageBarType::Top,"⚠","请同意隐私和服务条款！",1000,this);
+        return;
+    }
+    else if(usernameCombo->currentText().isEmpty())
+    {
+        ElaMessageBar::error(ElaMessageBarType::Top,"⚠","请输入用户名",1000,this);
+        return;
+    }
+    else if(passwordEdit->text().isEmpty())
+    {
+        ElaMessageBar::error(ElaMessageBarType::Top,"⚠","请输入密码",1000,this);
+        return;
+    }
+    isFreezeSignInBtn(true);
+    LoginVerify login;
+    login.setUserName(usernameCombo->currentText());
+    login.setPassWord(passwordEdit->text());
+    login.verifyServer();
 }

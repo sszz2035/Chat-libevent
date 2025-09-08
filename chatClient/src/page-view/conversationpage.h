@@ -96,7 +96,7 @@ signals:
     // user page to call video
     void sigCallVideoByOtherButton();
 public:
-    // explicit ConversationFriendPage(const UserBaseInfoDTO& userInfo,QWidget * parent = nullptr);
+    explicit ConversationFriendPage(const QString& userInfo,QWidget * parent = nullptr);
     ~ConversationFriendPage() override;
 
     // scroll to bottom
@@ -122,6 +122,7 @@ private:
 
     // --------------- BackEnd --------------
     // UserBaseInfoDTO    _userInfo;                           // cur conversation user info
+    QString _userInfo;
     MsgBubbleModel   * _msgBubbleModel     =   nullptr;
     // --------------- BackEnd --------------
 };
