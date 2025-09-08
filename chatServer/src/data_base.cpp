@@ -1,6 +1,6 @@
 #include"data_base.h"
 #include"log.h"
-DataBase::DataBase()
+DataBase::DataBase():id_generator_(std::make_shared<SnowflakeIDGenerator>(1, 1))
 {
 
 }
@@ -149,6 +149,7 @@ bool DataBase::database_init_table()
         return false;
     }
     const char* q="CREATE TABLE IF NOT EXISTS chat_user(\
+    uid BIGINT PRIMARY KEY,\
     username VARCHAR(128),\
     password VARCHAR(128),\
     friendlist VARCHAR(4096),\
@@ -172,12 +173,39 @@ bool DataBase::database_user_is_exist(std::string usr)
     return exec_query_and_fetch_row(sql, row);
 }
 
-void DataBase::database_insert_user_info(Json::Value& v)
+bool DataBase::database_user_is_exist_by_uid(uint64_t uid)
+{
+    char sql[256];
+    sprintf(sql,"SELECT * FROM chat_user WHERE uid =%llu;",uid);
+    MYSQL_ROW row;
+    return exec_query_and_fetch_row(sql, row);
+}
+
+std::string DataBase::database_get_username_by_uid(uint64_t uid)
+{
+    char sql[256];
+    sprintf(sql,"SELECT username FROM chat_user WHERE uid =%llu;",uid);
+    MYSQL_ROW row;
+    if(exec_query_and_fetch_row(sql, row))
+    {
+        return std::string(row[0]);
+    }
+    return "";
+}
+
+void DataBase::database_insert_user_info(Json::Value& v, uint64_t uid)
 {
     std::string username=v["username"].asString();
     std::string password=v["password"].asString();
+    
+    // 如果没有提供UID，则生成一个
+    if(uid == 0 && id_generator_)
+    {
+        uid = id_generator_->generate_uid();
+    }
+    
     char sql[256]={0};
-    sprintf(sql,"INSERT INTO chat_user(username,password) VALUES('%s','%s');",username.c_str(),password.c_str());
+    sprintf(sql,"INSERT INTO chat_user(uid,username,password) VALUES(%llu,'%s','%s');",uid,username.c_str(),password.c_str());
     exec_update(sql);
 }
 
@@ -197,11 +225,44 @@ bool DataBase::database_password_correct(Json::Value& v)
     else return true;
 }
 
+bool DataBase::database_password_correct_by_uid(uint64_t uid, const std::string& password)
+{
+    char sql[256]={0};
+    sprintf(sql,"SELECT password FROM chat_user WHERE uid=%llu;",uid);
+    MYSQL_ROW row;
+    if(!exec_query_and_fetch_row(sql, row))
+    {
+        LOG_ERROR("exec_query_and_fetch_row");
+        return false;
+    }
+    // 密码不正确
+    if(strcmp(row[0],password.c_str()))    return false;
+    //密码正确
+    else return true;
+}
+
 bool DataBase::database_get_friend_group(const Json::Value& v,std::string& friList,std::string& groList)
 {
     char sql[256]={0};
     sprintf(sql,"SELECT COALESCE(friendlist,''),COALESCE(grouplist,'') \
     FROM chat_user WHERE username='%s';",v["username"].asCString());
+    MYSQL_ROW row;
+    if(!exec_query_and_fetch_row(sql, row))
+    {
+        LOG_ERROR("exec_query_and_fetch_row");
+        return false;
+    }
+    //将好友列表和群组列表赋值
+    friList=std::string(row[0]);
+    groList=std::string(row[1]);
+    return true;
+}
+
+bool DataBase::database_get_friend_group_by_uid(uint64_t uid,std::string& friList,std::string& groList)
+{
+    char sql[256]={0};
+    sprintf(sql,"SELECT COALESCE(friendlist,''),COALESCE(grouplist,'') \
+    FROM chat_user WHERE uid=%llu;",uid);
     MYSQL_ROW row;
     if(!exec_query_and_fetch_row(sql, row))
     {

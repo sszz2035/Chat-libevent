@@ -53,6 +53,8 @@ private:
     std::shared_ptr<DataBase>db;
     //数据结构对象
     std::shared_ptr<ChatInfo>info;
+    //ID生成器对象
+    std::shared_ptr<SnowflakeIDGenerator>id_generator;
     //线程池对象
     std::vector<std::unique_ptr<ChatThread>>pool;
     //当前线程数量
@@ -72,5 +74,7 @@ private:
      * @details 把群信息从数据库读出来，放入map
     */
     void server_update_group_info();
+    
+
 };
 #endif

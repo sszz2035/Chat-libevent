@@ -193,12 +193,27 @@ void ChatThread::thread_register(struct bufferevent *bev, Json::Value &v)
     // 用户不存在
     else
     {
-        // 将用户添加到数据库中
+        // 将用户添加到数据库中，会自动生成UID
         db->database_insert_user_info(v);
+        
+        // 获取新生成的UID
+        std::string username = v["username"].asString();
+        char sql[256];
+        sprintf(sql, "SELECT uid FROM chat_user WHERE username='%s';", username.c_str());
+        MYSQL_ROW row;
+        uint64_t new_uid = 0;
+        
+        // 查询UID（数据库已经连接）
+        if (db->exec_query_and_fetch_row(sql, row)) {
+            new_uid = std::stoull(row[0]);
+        }
+        
         // 发送回应给客户端
         Json::Value val;
         val["cmd"] = "register_reply";
         val["result"] = "success";
+        val["uid"] = Json::Value::UInt64(new_uid);
+        val["username"] = username;
         thread_write_data(bev, val);
     }
 
@@ -227,21 +242,33 @@ void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
         LOG_PERROR("database_connect");
         return;
     }
-    std::string loginName = v["username"].asString();
-    // 判断登录用户是否存在
-    // 用户不存在
-    if (!db->database_user_is_exist(loginName))
-    {
-        Json::Value val;
-        val["cmd"] = "login_reply";
-        val["result"] = "not_exist";
-        thread_write_data(bev, val);
-        db->database_disconnect();
-        return;
-    }
+    
+    uint64_t loginUid = 0;
+    std::string loginName;
+    
+    if (v.isMember("uid") && v["uid"].isUInt64()) {
+        // UID登录
+        loginUid = v["uid"].asUInt64();
+        // 用户不存在
+        if (!db->database_user_is_exist_by_uid(loginUid))
+        {
+            Json::Value val;
+            val["cmd"] = "login_reply";
+            val["result"] = "not_exist";
+            thread_write_data(bev, val);
+            db->database_disconnect();
+            return;
+        }
+    } 
+    
     // 用户存在，判断密码是否正确
+    bool password_correct;
+    if (loginUid > 0) {
+        password_correct = db->database_password_correct_by_uid(loginUid, v["password"].asString());
+    }
+    
     // 密码不正确
-    if (!db->database_password_correct(v))
+    if (!password_correct)
     {
         Json::Value val;
         val["cmd"] = "login_reply";
@@ -253,22 +280,33 @@ void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
 
     // 读取好友列表与群组列表
     std::string friendlist, grouplist;
-    if (!db->database_get_friend_group(v, friendlist, grouplist))
+    bool get_friend_group_success;
+    
+    if (loginUid > 0) {
+        get_friend_group_success = db->database_get_friend_group_by_uid(loginUid, friendlist, grouplist);
+    }
+    if (!get_friend_group_success)
     {
         LOG_PERROR("database_get_friend_group");
         db->database_disconnect();
         return;
     }
+    loginName=db->database_get_username_by_uid(loginUid);
     // 回复客户端登陆成功
     Json::Value Val;
     Val["cmd"] = "login_reply";
     Val["result"] = "success";
+    Val["uid"] = loginUid > 0 ? Json::Value::UInt64(loginUid) : Json::Value::null;
+    Val["username"] = loginName;
     Val["friendlist"] = friendlist;
     Val["grouplist"] = grouplist;
     thread_write_data(bev, Val);
 
-    // 更新在线用户链表
-    info->list_update_list(bev, v);
+    // 更新在线用户链表 - 需要传递UID信息
+    Json::Value user_info;
+    user_info["uid"] = loginUid > 0 ? Json::Value::UInt64(loginUid) : Json::Value::null;
+    user_info["username"] = loginName;
+    info->list_update_list(bev, user_info);
 
     // 发送上线提示给所有好友
     if (friendlist.empty())
@@ -290,6 +328,7 @@ void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
         }
         Val.clear();
         Val["cmd"] = "online";
+        Val["uid"] = loginUid > 0 ? Json::Value::UInt64(loginUid) : Json::Value::null;
         Val["username"] = loginName;
         thread_write_data(b, Val);
     }

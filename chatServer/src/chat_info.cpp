@@ -68,7 +68,17 @@ bool ChatInfo::list_update_list(struct bufferevent* bev,Json::Value& v)
 {
     //上锁
     std::unique_lock<std::mutex>lock(list_mutex);
-    User user={v["username"].asString(),bev};
+    User user;
+    user.bufevent = bev;
+    user.name = v["username"].asString();
+    
+    // 如果有UID，设置UID
+    if (v.isMember("uid") && v["uid"].isUInt64()) {
+        user.uid = v["uid"].asUInt64();
+    } else {
+        user.uid = 0; // 表示没有UID
+    }
+    
     online_user->push_back(user);
     return true;
 }

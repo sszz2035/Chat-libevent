@@ -17,6 +17,8 @@ public:
     // */
     // bool operator==(const User& other);
 
+    // 用户ID
+    uint64_t uid;
     // 账号(用户名)
     std::string name;
     // 客户端对应的事件

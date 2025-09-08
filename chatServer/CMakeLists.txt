@@ -13,7 +13,8 @@ src/main.cpp
 src/chat_server.cpp
 src/chat_info.cpp 
 src/data_base.cpp
-src/chat_thread.cpp)
+src/chat_thread.cpp
+src/snowflake_id_generator.cpp)
 
 # pkg-config 查找MySQL库
 find_package(PkgConfig REQUIRED)

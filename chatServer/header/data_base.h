@@ -7,6 +7,7 @@
 #include<jsoncpp/json/json.h>
 #include<memory>
 #include <shared_mutex>
+#include "snowflake_id_generator.h"
 
 //为MYSQL* 指针定制的删除器
 struct MysqlDeleter {
@@ -56,28 +57,61 @@ public:
      * @return 存在返回true 不存在返回false
     */
     bool database_user_is_exist(std::string usr);
+    
+    /**
+     * @brief 判断用户是否存在于数据库中(通过UID)
+     * @param uid 表示用户ID
+     * @return 存在返回true 不存在返回false
+    */
+    bool database_user_is_exist_by_uid(uint64_t uid);
+    
+    /**
+     * @brief 通过UID获取用户名
+     * @param uid 用户ID
+     * @return 用户名，如果不存在返回空字符串
+    */
+    std::string database_get_username_by_uid(uint64_t uid);
 
     /**
      * @brief 将用户添加到数据库中
+     * @param v 用户信息，包含username,password
+     * @param uid 用户ID（如果为0则自动生成）
      * @note 对chat_user数据库进行操作
     */
-   void database_insert_user_info(Json::Value& v);
+   void database_insert_user_info(Json::Value& v, uint64_t uid = 0);
 
     /**
-     * @brief 判断密码是否正确
+     * @brief 判断密码是否正确(通过用户名)
      * @param v 接收到的Json数据
      * @note 对chat_user数据库进行操作
     */
    bool database_password_correct(Json::Value& v);
+   
+   /**
+     * @brief 判断密码是否正确(通过UID)
+     * @param uid 用户ID
+     * @param password 密码
+     * @return 密码正确返回true，错误返回false
+    */
+   bool database_password_correct_by_uid(uint64_t uid, const std::string& password);
 
    /**
-    * @brief 获取用户的好友列表与群列表
+    * @brief 获取用户的好友列表与群列表(通过用户名)
     * @param v 用户个人信息,包含username,password 
     * @param friList 接收用户好友列表的参数
     * @param groList 接收用户群组列表的参数
     * @return 成功返回true 失败返回false
    */
    bool database_get_friend_group(const Json::Value& v,std::string& friList,std::string& groList);
+   
+   /**
+    * @brief 获取用户的好友列表与群列表(通过UID)
+    * @param uid 用户ID
+    * @param friList 接收用户好友列表的参数
+    * @param groList 接收用户群组列表的参数
+    * @return 成功返回true 失败返回false
+   */
+   bool database_get_friend_group_by_uid(uint64_t uid,std::string& friList,std::string& groList);
 
    /**
     * @brief 用于处理添加好友的更新好友列表操作
@@ -107,7 +141,7 @@ public:
    */
    void database_update_group_member(const std::string &groupname,const std::string &username);
     
-private:
+public:
 
     /**
      * @brief [辅助函数] 用于执行查询命令，并返回查询结果
@@ -117,6 +151,8 @@ private:
      * @return 成功返回true 失败返回false
     */
     bool exec_query_and_fetch_row(const char* sql, MYSQL_ROW& row);
+
+private:
 
     /**
      * @brief [辅助函数] 用于执行不返回结果的sql语句(UPDATE,INSERT,DELETE)
@@ -128,6 +164,8 @@ private:
     std::unique_ptr<MYSQL,MysqlDeleter>mysql;
     //数据库的锁(读写锁)
     std::shared_mutex mutex_;
+    //ID生成器
+    std::shared_ptr<SnowflakeIDGenerator> id_generator_;
 };
 
 #endif
