@@ -61,6 +61,86 @@ void ArchPage::setUserInfo(UserInfo *info)
     userInfo->_type=info->_type;
 }
 
+UserInfo ArchPage::getUserInfo()
+{
+    return UserInfo(*userInfo);
+}
+
+ void ArchPage::convertUserInfoToFriendshipData(UserInfo *userInfo)
+{
+    if (!userInfo) {
+        qDebug() << "Error: userInfo is null in convertUserInfoToContactData";
+        return;
+    }
+    // 解析好友列表和群组列表
+    QStringList friendList = userInfo->_friList.split('|', Qt::SkipEmptyParts);
+    QStringList groupList = userInfo->_groList.split('|', Qt::SkipEmptyParts);
+    
+    // 清空缓存并重置计数器
+    cache.clear();
+    pendingCallbacks = 0;
+    
+    //处理好友数据
+    for(const QString& friendId : friendList)
+    {
+        int friendssid=friendId.toInt();
+        if(friendssid>0)
+        {
+            FriendshipData friendData;
+            friendData.ssid=userInfo->_ssid;
+            friendData.friendSSID=friendssid;
+            friendData.friendType=1;
+            friendData.groupingName="我的好友";//默认分组
+            
+            // 使用值捕获和索引来安全地更新数据
+            int index = cache.size();
+            cache.push_back(friendData);
+            pendingCallbacks++;
+            
+            ClientRequestHandler::getInstance()->queryUserInfoByUid(friendssid, [this, index](const QJsonObject& obj)
+            {
+                if (index >= 0 && index < cache.size()) {
+                    // 安全地更新缓存中的数据
+                    cache[index].friendName = obj["username"].toString();
+                    cache[index].status = obj["status"].toString();
+                }
+                
+                pendingCallbacks--;
+                if (pendingCallbacks == 0) {
+                    // 所有回调都完成了，发出信号
+                    emit cacheUpdated();
+                }
+            });
+        }
+        else
+        {
+            qDebug()<<"Invalid friend ID format:"<<friendId;
+        }
+    }
+    //处理群组数据
+    // for(const QString& groupId:groupList)
+    // {
+    //     int groupssid=groupId.toInt();
+    //     if(groupssid>0)
+    //     {
+    //         FriendshipData groupData;
+    //         groupData.ssid=userInfo->_ssid;
+    //         groupData.friendSSID=groupssid;
+    //         groupData.friendType=2;
+    //         groupData.groupingName="我加入的群聊";
+    //         ClientRequestHandler::getInstance()->queryUserInfoByUid(groupssid,[&groupData](const QJsonObject&obj)
+    //         {
+    //             groupData.friendName=obj["groupname"].toString();
+    //         });
+    // cache.push_back(groupData);
+    //     }
+    //     else
+    //     {
+    //         qDebug()<<"Invaild group ID format:"<<groupId;
+    //     }
+    // }
+}
+
 //更新用户卡片
 void ArchPage::sltTriggerUpdate(UserInfo* info) {
     // UserBaseInfoDTO udto = g_pCommonData->getCurUserInfo();
@@ -83,6 +163,7 @@ void ArchPage::sltTriggerUpdate(UserInfo* info) {
     setUserInfoCardTitle(userInfo->_name);
     setUserInfoCardSubTitle(QString::number(userInfo->_ssid));
     setUserInfoCardPixmap(QPixmap(":/include/Image/Cirno.jpg"));
+    convertUserInfoToFriendshipData(userInfo);
 }
 
 void ArchPage::sltShowMaskEffect() {
@@ -322,6 +403,15 @@ void ArchPage::initConnectFunc() {
 
     connect(g_pContactPage,&ContactPage::sigHideArchPageMaskEffect,this,&ArchPage::sltHideMaskEffect);
     connect(g_pContactPage,&ContactPage::sigShowArchPageMaskEffect,this,&ArchPage::sltShowMaskEffect);
+    
+    // 连接缓存更新信号
+    connect(this, &ArchPage::cacheUpdated, this, [this]() {
+        qDebug()<<"Cache updated, size:"<<cache.size();
+        for(auto f:cache)
+        {
+           qDebug()<<f.friendName<<" "<<f.friendSSID<<" "<<f.friendType <<" "<<f.ssid<<" "<<f.status;
+        }
+    });
 }
 
 void ArchPage::resizeEvent(QResizeEvent *event) {

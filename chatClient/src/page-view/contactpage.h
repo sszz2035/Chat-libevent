@@ -1,7 +1,3 @@
-//
-// Created by FU-QAQ on 2024/12/11.
-//
-
 #ifndef SYNERGYSPOT_CONTACTPAGE_H
 #define SYNERGYSPOT_CONTACTPAGE_H
 
@@ -9,7 +5,7 @@
 #include "ElaScrollPage.h"
 
 #include "noticepage.h"
-
+#include"core/pagedata.h"
 #ifdef SS_PLATFORM_WINDOWS
 #ifdef SS_CONTACT_PAGE_EXPORTS
 #define SS_API __declspec(dllexport)
@@ -44,6 +40,8 @@ public:
 
     void addFriendGrouping(const QString& name);
 
+    void addContactInfo(const QString& groupingName,const FriendshipData& info);
+
     QList<QString> getFriendGrouping();
     // bool loadCacheContact(const QList<FriendshipDTO>& caches);
 
@@ -54,7 +52,7 @@ public:
     ElaTreeView *getFriendTreeView();
 
 public slots:
-    // void addContactInfo(const QString& groupingName,const MsgCombineDTO &info);
+    void addContactInfo(const QString& groupingName,const MsgCombineData &info);
 
 signals:
     // void sigTriggerAddMsgCard(const MsgCombineDTO &info);
@@ -96,9 +94,10 @@ private:
     // ----------------- UI -----------------
 
     // --------------- BackEnd --------------
-    // QMap<QString,QMap<QString,QList<MsgCombineDTO>>>  _groupingInfos;
+    //分组信息map,第一个QString为"friend"或"group"，对应的map是分组的信息链表
+    QMap<QString,QMap<QString,QList<MsgCombineData>>>  _groupingInfos;
     // assist find MsgCardInfo
-    // QHash<QString, MsgCombineDTO>                     _ssidToCardInfoHash;
+    QHash<QString, MsgCombineData>                     _ssidToCardInfoHash;
     // --------------- BackEnd --------------
 
     static ContactPage* _contactPage;

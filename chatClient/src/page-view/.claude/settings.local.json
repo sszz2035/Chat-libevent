@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Read(/C:\\qt-code\\trtr/**)",
-      "Read(/C:\\qt-code\\trtr/**)"
+      "Read(/C:\\qt-code\\trtr/**)",
+      "Read(/C:\\qt-code\\trtr\\src\\core/**)",
+      "Read(/C:\\qt-code\\trtr\\src\\core/**)",
+      "Read(/C:\\qt-code\\trtr\\src\\utils\\net-work/**)",
+      "Read(/C:\\qt-code\\trtr\\src\\core/**)",
+      "Read(/C:\\qt-code\\trtr\\src\\utils\\net-work/**)",
+      "Read(/C:\\qt-code\\trtr\\src\\core/**)",
+      "Read(/C:\\qt-code\\trtr\\src\\utils\\net-work/**)"
     ],
     "deny": [],
     "ask": []

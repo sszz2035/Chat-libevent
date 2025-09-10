@@ -5,7 +5,10 @@
 #include <QObject>
 #include <QTcpSocket>
 #include<QTimer>
+// #include<core/dataquery.h>
 #include"page-view/registerpage.h"
+#include "core/clientrequesthandler.h"
+
 #define IP "192.168.200.130"
 #define PORT 8888
 class ClientConServer:QObject
@@ -16,15 +19,15 @@ public:
     static void destroyInstance();
     void connectToServer();
     void clinet_write_data(QJsonObject& obj);
+    void client_receive_data(QByteArray& ba);
     QTcpSocket* getClientSocket();
 private:
     explicit ClientConServer();
     ~ClientConServer();
-    void client_receive_data(QByteArray& ba);
 
 private slots:
-    void client_reply_info();
     void handle_error(QAbstractSocket::SocketError error);
+    void readyReadHandler();
 private:
     QTcpSocket* socket;
     static ClientConServer* con;

@@ -18,7 +18,7 @@ ClientConServer::ClientConServer():socket(new QTcpSocket()),
 
     connect(socket,SIGNAL(errorOccurred(QAbstractSocket::SocketError)),this,SLOT(handle_error(QAbstractSocket::SocketError)));
 
-    connect(socket,SIGNAL(readyRead()),this,SLOT(client_reply_info()));
+    connect(socket,SIGNAL(readyRead()),this,SLOT(readyReadHandler()));
 
     connect(socket,&QTcpSocket::connected,this,[this]{
         if(socket->state()==QAbstractSocket::ConnectedState)
@@ -41,31 +41,51 @@ void ClientConServer::client_receive_data(QByteArray &ba)
     int size=0,sum=0;
     bool flag=true;
     char buf[1024]={0};
-    socket->read(buf,4);
+    
+    // 检查是否有足够的数据可读
+    if (socket->bytesAvailable() < 4) {
+        qDebug() << "Not enough data available for size header";
+        return;
+    }
+    
+    qint64 bytesRead = socket->read(buf,4);
+    if (bytesRead != 4) {
+        qDebug() << "Failed to read size header, read" << bytesRead << "bytes";
+        return;
+    }
+    
     memcpy(&size,buf,4);
+    qDebug() << "Expecting data size:" << size << "bytes, available:" << socket->bytesAvailable() << "bytes";
+    
+    if (size > 1024 || size <= 0) {
+        qDebug() << "Invalid data size:" << size;
+        return;
+    }
+    
     while(flag)
     {
         memset(buf,0,1024);
-        sum+=socket->read(buf,size-sum);
-        if(sum>=size)   flag=false;
+        int toRead = qMin(size - sum, 1024);
+        bytesRead = socket->read(buf, toRead);
+        if (bytesRead <= 0) {
+            qDebug() << "Failed to read data, read" << bytesRead << "bytes";
+            break;
+        }
+        sum += bytesRead;
+        ba.append(buf, bytesRead);
+        if(sum >= size)   flag=false;
     }
-    ba.append(buf);
-    qDebug()<<"data:"<<ba;
+    
+    qDebug() << "Received complete data:" << ba.size() << "bytes, data:" << ba;
 }
 
-void ClientConServer::client_reply_info()
+void ClientConServer::readyReadHandler()
 {
-    QByteArray ba;
-    client_receive_data(ba);
-    QJsonObject obj;
-    obj=QJsonDocument::fromJson(ba).object();
-    if(obj.value("cmd").toString()=="register_reply")
-    {
-        RegisterPage::getInstance()->register_handler(obj);
-    }
-    else if(obj.value("cmd").toString()=="login_reply")
-    {
-        LandPage::getInstance()->login_handler(obj);
+    qDebug() << "readyRead triggered, bytes available:" << socket->bytesAvailable();
+    
+    // 循环处理所有可用的数据包
+    while (socket->bytesAvailable() >= 4) {
+        ClientRequestHandler::getInstance()->client_reply_info();
     }
 }
 
@@ -121,11 +141,28 @@ void ClientConServer::connectToServer()
 
 void ClientConServer::clinet_write_data(QJsonObject &obj)
 {
+    // 检查连接状态
+    if (socket->state() != QAbstractSocket::ConnectedState) {
+        qDebug() << "Socket not connected, current state:" << socket->state();
+        return;
+    }
+    
     QJsonDocument doc(obj);
     QByteArray sendData=doc.toJson();
     int size=sendData.size();
     sendData.insert(0,(char*)&size,4);
-    socket->write(sendData);
+    
+    // 确保数据完全发送
+    qint64 bytesWritten = socket->write(sendData);
+    if (bytesWritten == -1) {
+        qDebug() << "Failed to write data:" << socket->errorString();
+        return;
+    }
+    
+    // 等待数据发送完成
+    socket->flush();
+    
+    qDebug() << "Sent data:" << obj["cmd"].toString() << "size:" << bytesWritten << "bytes";
 }
 
 QTcpSocket *ClientConServer::getClientSocket()

@@ -4,6 +4,8 @@
 #include "define.h"
 #include "ElaWindow.h"
 #include "ElaWidget.h"
+#include"core/pagedata.h"
+
 class ElaContentDialog;
 class ElaStatusBar;
 class ElaText;
@@ -37,11 +39,14 @@ class ArchPage : public ElaWindow{
 signals:
     void sigJumpOtherPageRequest(PageName pageName);
     void sigTriggerUpdate(UserInfo* info);
+    void cacheUpdated();
 public:
     static ArchPage * getInstance();
     static void destroyInstance();
     void setInstanceParent(QObject * parent);
     void setUserInfo(UserInfo *info);
+    UserInfo getUserInfo();
+    void convertUserInfoToFriendshipData(UserInfo *userInfo);
 public slots:
     void sltTriggerUpdate(UserInfo* info);
 
@@ -89,8 +94,10 @@ private:
     static ArchPage * _obj;
     SSMaskWidget  *_maskWidget;
     LoadingDialog *_loadingDialog;
-
+private:
     UserInfo* userInfo;
+    QList<FriendshipData> cache;//用来转换数据的缓存
+    int pendingCallbacks = 0;
 };
 
 #endif //SYNERGYSPOT_ARCHPAGE_H

@@ -42,6 +42,9 @@ qt_add_executable(chatclient
     src/page-view/editinfopage.h src/page-view/editinfopage.cpp
     src/page-view/define.h
     src/core/loginverify.h src/core/loginverify.cpp
+    src/core/pagedata.h
+
+    src/core/clientrequesthandler.h src/core/clientrequesthandler.cpp
 
 
 )
@@ -57,6 +60,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Network)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 target_link_libraries(chatclient
     PRIVATE
@@ -68,6 +72,7 @@ target_link_libraries(chatclient PRIVATE Qt6::Widgets)
 target_link_libraries(chatclient PRIVATE Qt6::Core Qt6::Network)
 target_link_libraries(chatclient PRIVATE Qt6::Core)
 target_link_libraries(chatclient PRIVATE Qt6::Widgets)
+target_link_libraries(chatclient PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)
 

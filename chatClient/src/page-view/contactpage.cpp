@@ -12,7 +12,6 @@
 #include <mutex>
 #include <ElaTheme.h>
 
-
 ContactPage * ContactPage::_contactPage = nullptr;
 static std::mutex m;
 
@@ -38,13 +37,15 @@ void ContactPage::destroyContactPage() {
     }
 }
 
-// void ContactPage::addFriendGrouping(const QString &name) {
-//     if (_friendModel != nullptr && !_groupingInfos["friend"].contains(name)) {
-//         _friendModel->addGrouping(name);
-//     }
-//     _groupingInfos["friend"].insert(name,{});
-// }
+//添加好友分组
+void ContactPage::addFriendGrouping(const QString &name) {
+    if (_friendModel != nullptr && !_groupingInfos["friend"].contains(name)) {
+        _friendModel->addGrouping(name);
+    }
+    _groupingInfos["friend"].insert(name,{});
+}
 
+//获取好友分组
 // QList<QString> ContactPage::getFriendGrouping() {
 //     return _groupingInfos["friend"].keys().toList();
 // }
@@ -96,42 +97,43 @@ ElaTreeView * ContactPage::getFriendTreeView() {
     return cpObj;
 }
 
-// void ContactPage::addContactInfo(const QString& groupingName,const MsgCombineDTO &info) {
-//     if (!info.isGroup) {
-//         if (!_groupingInfos["friend"].contains(groupingName)) {
-//             addFriendGrouping(groupingName);
-//         }
-//         QString avatarPath;
-//         if (info.userBaseInfo.avatarPath.isEmpty() || info.userBaseInfo.avatarPath == "-1") {
-//             avatarPath = ":/contact-page/rc-page/img/SS-default-icon.jpg";
-//         }else {
-//             avatarPath = info.userBaseInfo.avatarPath;
-//         }
-//         _friendModel->delGroupingItem(groupingName,{
-//                                                         info.userBaseInfo.ssid,info.userBaseInfo.username,"","","离线",avatarPath
-//                                                     });
-//         _friendModel->addGroupingItem(groupingName,{
-//                                                         info.userBaseInfo.ssid,info.userBaseInfo.username,"","","离线",avatarPath
-//                                                     });
-//         _groupingInfos["friend"][groupingName].append(info);
-//         _ssidToCardInfoHash[info.userBaseInfo.ssid] = info;
-//     }else {
-//         QString avatarPath;
-//         if (info.userBaseInfo.avatarPath.isEmpty() || info.userBaseInfo.avatarPath == "-1") {
-//             avatarPath = ":/contact-page/rc-page/img/SS-default-icon.jpg";
-//         }else {
-//             avatarPath = info.userBaseInfo.avatarPath;
-//         }
-//         _groupModel->delGroupingItem(groupingName,{
-//                                                        info.groupBaseInfo.ssidGroup,info.groupBaseInfo.groupName,"","","离线",avatarPath
-//                                                    });
-//         _groupModel->addGroupingItem(groupingName,{
-//                                                        info.groupBaseInfo.ssidGroup,info.groupBaseInfo.groupName,"","","离线",avatarPath
-//                                                    });
-//         _groupingInfos["group"][groupingName].append(info);
-//         _ssidToCardInfoHash[info.groupBaseInfo.ssidGroup] = info;
-//     }
-// }
+//设置成MsgCombineData就可以既对好友进行操作 也可以对群进行操作
+void ContactPage::addContactInfo(const QString& groupingName,const MsgCombineData &info) {
+    if (!info.isGroup) {
+        if (!_groupingInfos["friend"].contains(groupingName)) {
+            addFriendGrouping(groupingName);
+        }
+        QString avatarPath;
+        if (info.userBaseInfo.avatarPath.isEmpty() || info.userBaseInfo.avatarPath == "-1") {
+            avatarPath = ":/include/Image/Cirno.jpg";
+        }else {
+            avatarPath = info.userBaseInfo.avatarPath;
+        }
+        _friendModel->delGroupingItem(groupingName,{
+                                                        QString::number(info.userBaseInfo.ssid),info.userBaseInfo.username,"离线",avatarPath
+                                                    });
+        _friendModel->addGroupingItem(groupingName,{
+                                                        QString::number(info.userBaseInfo.ssid),info.userBaseInfo.username,"离线",avatarPath
+                                                    });
+        _groupingInfos["friend"][groupingName].append(info);
+        _ssidToCardInfoHash[QString::number(info.userBaseInfo.ssid)] = info;
+    }else {
+        QString avatarPath;
+        if (info.userBaseInfo.avatarPath.isEmpty() || info.userBaseInfo.avatarPath == "-1") {
+            avatarPath = ":/contact-page/rc-page/img/SS-default-icon.jpg";
+        }else {
+            avatarPath = info.userBaseInfo.avatarPath;
+        }
+        _groupModel->delGroupingItem(groupingName,{
+                                                       QString::number(info.groupBaseInfo.ssidGroup),info.groupBaseInfo.groupName,"离线",avatarPath
+                                                   });
+        _groupModel->addGroupingItem(groupingName,{
+                                                       QString::number(info.groupBaseInfo.ssidGroup),info.groupBaseInfo.groupName,"离线",avatarPath
+                                                   });
+        _groupingInfos["group"][groupingName].append(info);
+        _ssidToCardInfoHash[QString::number(info.groupBaseInfo.ssidGroup)] = info;
+    }
+}
 
 ContactPage::ContactPage(QWidget *parent) : ElaScrollPage(parent) {
     initWindow();
@@ -142,8 +144,10 @@ ContactPage::ContactPage(QWidget *parent) : ElaScrollPage(parent) {
 
     initConnectFunc();
 
-    _friendModel->addGrouping("303");
-    _friendModel->addGroupingItem("303",{"1","阿旺","online",":/include/Image/Cirno.jpg"});
+    // _friendModel->addGrouping("303");
+    // _friendModel->addGroupingItem("303",{"1","阿旺","离线",":/include/Image/Cirno.jpg"});
+    // addContactInfo("303",{{2035,"张毅博",""},{},{},"",false});
+    // addContactInfo("303",{{20357,"胡益磊",""},{},{},"",false});
 }
 ContactPage::~ContactPage() {
     _noticePage->deleteLater();
