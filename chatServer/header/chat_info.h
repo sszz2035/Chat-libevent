@@ -54,7 +54,7 @@ public:
 
     /**
      * @brief 从在线的人中查找user，返回user对应的事件
-     * @param user 用户名
+     * @param user 用户id
      * @return 查找成功返回对应的事件，失败返回NULL
      */
     struct bufferevent *list_friend_online(const std::string &user);

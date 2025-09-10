@@ -280,7 +280,7 @@ void DataBase::database_update_friendlist(const std::string& u,const std::string
     std::string friendlist;
     //查询数据库中的u的好友列表
     char sql[256]={0};
-    sprintf(sql,"SELECT COALESCE(friendlist,'') FROM chat_user WHERE username='%s';",u.c_str());
+    sprintf(sql,"SELECT COALESCE(friendlist,'') FROM chat_user WHERE uid=%s;",u.c_str());
     MYSQL_ROW row;
     if(!exec_query_and_fetch_row(sql,row))
     {
@@ -301,7 +301,7 @@ void DataBase::database_update_friendlist(const std::string& u,const std::string
 
     //更新好友列表
     memset(sql,0,sizeof(sql));
-    sprintf(sql,"UPDATE chat_user SET friendlist='%s' WHERE username='%s';",friendlist.c_str(),u.c_str());
+    sprintf(sql,"UPDATE chat_user SET friendlist='%s' WHERE uid=%s;",friendlist.c_str(),u.c_str());
     if(!exec_update(sql))
     {
         LOG_ERROR("exec_update");
@@ -311,10 +311,10 @@ void DataBase::database_update_friendlist(const std::string& u,const std::string
 
 void DataBase::database_add_friend(const Json::Value& v)
 {
-    std::string username=v["username"].asString();
-    std::string friendname=v["friend"].asString();
-    database_update_friendlist(username,friendname);
-    database_update_friendlist(friendname,username);
+    uint64_t uid=v["uid"].asUInt64();
+    uint64_t friend_uid=v["friend_uid"].asUInt64();
+    database_update_friendlist(std::to_string(uid),std::to_string(friend_uid));
+    database_update_friendlist(std::to_string(friend_uid),std::to_string(uid));
 }
 
 void DataBase::database_add_new_group(const std::string &groupname,const std::string &owner)

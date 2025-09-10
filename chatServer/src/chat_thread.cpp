@@ -1,17 +1,16 @@
 #include "chat_thread.h"
 #include "log.h"
-ChatThread::ChatThread():base(event_base_new()),
-_thread(std::make_unique<std::thread>(worker,this)),
-_id(_thread->get_id())
+ChatThread::ChatThread() : base(event_base_new()),
+                           _thread(std::make_unique<std::thread>(worker, this)),
+                           _id(_thread->get_id())
 {
 }
 
 ChatThread::~ChatThread()
 {
-
 }
 
-void ChatThread::start(std::shared_ptr<ChatInfo> &info,std::shared_ptr<DataBase> &db)
+void ChatThread::start(std::shared_ptr<ChatInfo> &info, std::shared_ptr<DataBase> &db)
 {
     this->info = info;
     this->db = db;
@@ -99,49 +98,54 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
     {
         t->thread_add_friend(bev, val);
     }
-    //处理私聊事件
-    else if(val["cmd"]=="private")
+    // 处理私聊事件
+    else if (val["cmd"] == "private")
     {
-        t->thread_private_chat(bev,val);
+        t->thread_private_chat(bev, val);
     }
-    //处理添加群组事件
-    else if(val["cmd"]=="creategroup")
+    // 处理添加群组事件
+    else if (val["cmd"] == "creategroup")
     {
-        t->thread_create_group(bev,val);
+        t->thread_create_group(bev, val);
     }
-    //处理加入群聊事件
-    else if(val["cmd"]=="joingroup")
+    // 处理加入群聊事件
+    else if (val["cmd"] == "joingroup")
     {
-        t->thread_join_group(bev,val);
+        t->thread_join_group(bev, val);
     }
-    //处理群聊事件
-    else if(val["cmd"]=="groupchat")
-    {   
-        t->thread_group_chat(bev,val);
-    }
-    //处理文件传输事件
-    else if(val["cmd"]=="file")
+    // 处理群聊事件
+    else if (val["cmd"] == "groupchat")
     {
-        t->thread_transer_file(bev,val);
+        t->thread_group_chat(bev, val);
     }
-    //处理客户端下线事件
-    else if(val["cmd"]=="offline")
+    // 处理文件传输事件
+    else if (val["cmd"] == "file")
     {
-        t->thread_client_offline(bev,val);
+        t->thread_transer_file(bev, val);
+    }
+    // 处理客户端下线事件
+    else if (val["cmd"] == "offline")
+    {
+        t->thread_client_offline(bev, val);
+    }
+    // 处理查询用户uid事件
+    else if(val["cmd"]=="query_by_uid")
+    {
+        t->thread_query_user_by_uid(bev,val);
     }
 }
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
 {
-    //客户端连接已关闭
-    if(events& BEV_EVENT_EOF)
+    // 客户端连接已关闭
+    if (events & BEV_EVENT_EOF)
     {
-        std::cout<<"[disconnect] client offline"<<std::endl;
+        std::cout << "[disconnect] client offline" << std::endl;
         bufferevent_free(bev);
     }
     else
     {
-        std::cout<<"Unknown Error"<<std::endl;
+        std::cout << "Unknown Error" << std::endl;
     }
 }
 
@@ -178,36 +182,37 @@ void ChatThread::thread_register(struct bufferevent *bev, Json::Value &v)
         LOG_PERROR("database_connect");
         return;
     }
-    // 判断用户是否已存在
+    // // 判断用户是否已存在
 
-    // 用户已存在
-    if (db->database_user_is_exist(v["username"].asString()))
-    {
-        Json::Value val;
-        val["cmd"] = "register_reply";
-        val["result"] = "user_exist";
-        // 发送回应给客户端
-        thread_write_data(bev, val);
-    }
+    // // 用户已存在
+    // if (db->database_user_is_exist(v["username"].asString()))
+    // {
+    //     Json::Value val;
+    //     val["cmd"] = "register_reply";
+    //     val["result"] = "user_exist";
+    //     // 发送回应给客户端
+    //     thread_write_data(bev, val);
+    // }
 
     // 用户不存在
-    else
-    {
+    // else
+    // {
         // 将用户添加到数据库中，会自动生成UID
         db->database_insert_user_info(v);
-        
+
         // 获取新生成的UID
         std::string username = v["username"].asString();
         char sql[256];
         sprintf(sql, "SELECT uid FROM chat_user WHERE username='%s';", username.c_str());
         MYSQL_ROW row;
         uint64_t new_uid = 0;
-        
+
         // 查询UID（数据库已经连接）
-        if (db->exec_query_and_fetch_row(sql, row)) {
+        if (db->exec_query_and_fetch_row(sql, row))
+        {
             new_uid = std::stoull(row[0]);
         }
-        
+
         // 发送回应给客户端
         Json::Value val;
         val["cmd"] = "register_reply";
@@ -215,7 +220,7 @@ void ChatThread::thread_register(struct bufferevent *bev, Json::Value &v)
         val["uid"] = Json::Value::UInt64(new_uid);
         val["username"] = username;
         thread_write_data(bev, val);
-    }
+    // }
 
     // 断开数据库
     db->database_disconnect();
@@ -242,11 +247,12 @@ void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
         LOG_PERROR("database_connect");
         return;
     }
-    
+
     uint64_t loginUid = 0;
     std::string loginName;
-    
-    if (v.isMember("uid") && v["uid"].isUInt64()) {
+
+    if (v.isMember("uid") && v["uid"].isUInt64())
+    {
         // UID登录
         loginUid = v["uid"].asUInt64();
         // 用户不存在
@@ -259,14 +265,15 @@ void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
             db->database_disconnect();
             return;
         }
-    } 
-    
+    }
+
     // 用户存在，判断密码是否正确
     bool password_correct;
-    if (loginUid > 0) {
+    if (loginUid > 0)
+    {
         password_correct = db->database_password_correct_by_uid(loginUid, v["password"].asString());
     }
-    
+
     // 密码不正确
     if (!password_correct)
     {
@@ -281,8 +288,9 @@ void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
     // 读取好友列表与群组列表
     std::string friendlist, grouplist;
     bool get_friend_group_success;
-    
-    if (loginUid > 0) {
+
+    if (loginUid > 0)
+    {
         get_friend_group_success = db->database_get_friend_group_by_uid(loginUid, friendlist, grouplist);
     }
     if (!get_friend_group_success)
@@ -291,7 +299,7 @@ void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
         db->database_disconnect();
         return;
     }
-    loginName=db->database_get_username_by_uid(loginUid);
+    loginName = db->database_get_username_by_uid(loginUid);
     // 回复客户端登陆成功
     Json::Value Val;
     Val["cmd"] = "login_reply";
@@ -359,11 +367,24 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
         LOG_PERROR("database_connect");
         return;
     }
+
     Json::Value val;
-    std::string friendName = v["friend"].asString();
-    // 判断用户是否存在
-    // 用户不存在
-    if (!db->database_user_is_exist(friendName))
+
+    // 检查是否提供了friend_uid字段
+    if (!v.isMember("friend_uid") || !v["friend_uid"].isUInt64())
+    {
+        val["cmd"] = "addfriend_reply";
+        val["result"] = "invalid_request";
+        thread_write_data(bev, val);
+        db->database_disconnect();
+        return;
+    }
+
+    uint64_t friend_uid = v["friend_uid"].asUInt64();
+    uint64_t current_uid = v["uid"].asUInt64();
+
+    // 检查用户是否存在
+    if (!db->database_user_is_exist_by_uid(friend_uid))
     {
         val["cmd"] = "addfriend_reply";
         val["result"] = "not_exist";
@@ -372,239 +393,289 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
         return;
     }
 
-    // 判断是否是好友关系
+    // 获取好友用户名用于回复
+    std::string friend_name = db->database_get_username_by_uid(friend_uid);
+
+    // 获取当前用户的好友列表
     std::string Friend[1024];
     std::string friendlist, grouplist;
-    if (db->database_get_friend_group(v, friendlist, grouplist))
+
+    if (db->database_get_friend_group_by_uid(current_uid, friendlist, grouplist))
     {
-        int num = thread_parse_string(friendlist, Friend);
-        for (int i = 0; i < num; i++)
+        if (!friendlist.empty())
         {
-            if (Friend[i] == friendName)
+            int num = thread_parse_string(friendlist, Friend);
+            for (int i = 0; i < num; i++)
             {
-                val["cmd"] = "addfriend_reply";
-                val["result"] = "already_friend";
-                thread_write_data(bev, val);
-                db->database_disconnect();
-                return;
+                if (std::stoull(Friend[i]) == friend_uid)
+                {
+                    val["cmd"] = "addfriend_reply";
+                    val["result"] = "already_friend";
+                    thread_write_data(bev, val);
+                    db->database_disconnect();
+                    return;
+                }
             }
         }
     }
 
+    // 准备添加好友的JSON数据
+    Json::Value add_friend_request;
+    add_friend_request["uid"] = Json::Value::UInt64(current_uid);
+    add_friend_request["friend_uid"] = Json::Value::UInt64(friend_uid);
+
     // 修改数据库
-    db->database_add_friend(v);
-    
+    db->database_add_friend(add_friend_request);
+
     // 回复好友
-    val["cmd"]="be_addfriend";
-    val["friend"]=v["username"];
-    struct bufferevent* b=info->list_friend_online(v["friend"].asString());
-    if(b!=NULL) thread_write_data(b,val);
+    val["cmd"] = "be_addfriend";
+    val["uid"] = Json::Value::UInt64(current_uid);
+    val["username"] = v["username"];
+    struct bufferevent *b = info->list_friend_online(std::to_string(friend_uid));
+    if (b != NULL)
+        thread_write_data(b, val);
 
     // 回复客户端
     val.clear();
-    val["cmd"]="addfriend_reply";
-    val["result"]="success";
-    thread_write_data(bev,val);
+    val["cmd"] = "addfriend_reply";
+    val["result"] = "success";
+    val["friend_uid"] = Json::Value::UInt64(friend_uid);
+    val["friend_username"] = friend_name;
+    thread_write_data(bev, val);
 
     db->database_disconnect();
 }
 
-void ChatThread::thread_private_chat(struct bufferevent* bev,const Json::Value& v)
+void ChatThread::thread_private_chat(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string username=v["username"].asString();
-    std::string friendname=v["tofriend"].asString();
-    struct bufferevent* b=info->list_friend_online(friendname);
+    std::string username = v["username"].asString();
+    std::string friendname = v["tofriend"].asString();
+    struct bufferevent *b = info->list_friend_online(friendname);
     Json::Value val;
-    //如果好友不在线
-    if(b==NULL)
+    // 如果好友不在线
+    if (b == NULL)
     {
-        val["cmd"]="private_reply";
-        val["result"]="offline";
-        thread_write_data(bev,val);
+        val["cmd"] = "private_reply";
+        val["result"] = "offline";
+        thread_write_data(bev, val);
         return;
     }
-    //好友在线
-    val["cmd"]="private";
-    val["fromfriend"]=username;
-    val["text"]=v["text"];
-    thread_write_data(b,val);
+    // 好友在线
+    val["cmd"] = "private";
+    val["fromfriend"] = username;
+    val["text"] = v["text"];
+    thread_write_data(b, val);
 }
 
-void ChatThread::thread_create_group(struct bufferevent* bev,const Json::Value& v)
+void ChatThread::thread_create_group(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string groupname=v["groupname"].asString();
+    std::string groupname = v["groupname"].asString();
     Json::Value val;
-    //判断是否已有群
-    if(info->list_group_is_exist(groupname))
+    // 判断是否已有群
+    if (info->list_group_is_exist(groupname))
     {
-        val["cmd"]="creategroup_reply";
-        val["result"]="exist";
-        thread_write_data(bev,val);
+        val["cmd"] = "creategroup_reply";
+        val["result"] = "exist";
+        thread_write_data(bev, val);
         return;
     }
 
-    //在数据库中添加新群
-    if(!db->database_connect())
+    // 在数据库中添加新群
+    if (!db->database_connect())
     {
         LOG_ERROR("database_connect");
         return;
     }
-    db->database_add_new_group(groupname,v["owner"].asString());
+    db->database_add_new_group(groupname, v["owner"].asString());
     db->database_disconnect();
-    
-   //将新群添加到群信息中
-    info->list_add_new_group(groupname,v["owner"].asString());
 
-    val["cmd"]="creategroup_reply";
-    val["result"]="success";
-    thread_write_data(bev,val);
+    // 将新群添加到群信息中
+    info->list_add_new_group(groupname, v["owner"].asString());
+
+    val["cmd"] = "creategroup_reply";
+    val["result"] = "success";
+    thread_write_data(bev, val);
 }
 
-void ChatThread::thread_join_group(struct bufferevent* bev,const Json::Value& v)
+void ChatThread::thread_join_group(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string groupname=v["groupname"].asString();
-    std::string username=v["username"].asString();
+    std::string groupname = v["groupname"].asString();
+    std::string username = v["username"].asString();
     Json::Value val;
-    //判断群是否存在
-    if(!info->list_group_is_exist(groupname))
+    // 判断群是否存在
+    if (!info->list_group_is_exist(groupname))
     {
-        val["cmd"]="joingroup_reply";
-        val["result"]="not_exist";
-        thread_write_data(bev,val);
+        val["cmd"] = "joingroup_reply";
+        val["result"] = "not_exist";
+        thread_write_data(bev, val);
         return;
     }
-    //判断群中是否已有当前成员
-    if(info->list_member_is_group(groupname,username))
+    // 判断群中是否已有当前成员
+    if (info->list_member_is_group(groupname, username))
     {
-        val["cmd"]="joingroup_reply";
-        val["result"]="already";
-        thread_write_data(bev,val);
+        val["cmd"] = "joingroup_reply";
+        val["result"] = "already";
+        thread_write_data(bev, val);
         return;
     }
-    //修改数据库
+    // 修改数据库
     db->database_connect();
-    db->database_update_group_member(groupname,username);
+    db->database_update_group_member(groupname, username);
     db->database_disconnect();
 
-    //更新链表中群信息
-    info->list_update_group_member(groupname,username);
+    // 更新链表中群信息
+    info->list_update_group_member(groupname, username);
 
-    //向群中所有用户发送消息
-    std::list<std::string>l=info->list_get_list(groupname);
+    // 向群中所有用户发送消息
+    std::list<std::string> l = info->list_get_list(groupname);
     std::string member;
-    for(auto it=l.begin();it!=l.end();it++)
+    for (auto it = l.begin(); it != l.end(); it++)
     {
-        if(*it==username)   continue;
+        if (*it == username)
+            continue;
         member.append(*it);
         member.append("|");
-        struct bufferevent* b=info->list_friend_online(*it);
-        if(b==NULL) continue;
-        val["cmd"]="new_member_join";
-        val["groupname"]=groupname;
-        val["username"]=username;
-        thread_write_data(b,val);
+        struct bufferevent *b = info->list_friend_online(*it);
+        if (b == NULL)
+            continue;
+        val["cmd"] = "new_member_join";
+        val["groupname"] = groupname;
+        val["username"] = username;
+        thread_write_data(b, val);
     }
-    //去掉最后的'|'
-    member.erase(member.size()-1);
+    // 去掉最后的'|'
+    member.erase(member.size() - 1);
     val.clear();
-    //向自己发送消息
-    val["cmd"]="joingroup_reply";
-    val["result"]="success";
-    val["member"]=member;
-    thread_write_data(bev,val);
-}   
+    // 向自己发送消息
+    val["cmd"] = "joingroup_reply";
+    val["result"] = "success";
+    val["member"] = member;
+    thread_write_data(bev, val);
+}
 
-void ChatThread::thread_group_chat(struct bufferevent* bev,const Json::Value& v)
+void ChatThread::thread_group_chat(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string groupname=v["groupname"].asString();
-    std::string username=v["username"].asString();
-    std::string text=v["text"].asString();
-    //获取成员列表
-    std::list<std::string>member=info->list_get_list(groupname);
-    //将消息转发给群成员
-    for(auto it=member.begin();it!=member.end();it++)
+    std::string groupname = v["groupname"].asString();
+    std::string username = v["username"].asString();
+    std::string text = v["text"].asString();
+    // 获取成员列表
+    std::list<std::string> member = info->list_get_list(groupname);
+    // 将消息转发给群成员
+    for (auto it = member.begin(); it != member.end(); it++)
     {
-        if(*it==username)   continue;
-        struct bufferevent* b=info->list_friend_online(*it);
-        if(b==NULL) continue;
+        if (*it == username)
+            continue;
+        struct bufferevent *b = info->list_friend_online(*it);
+        if (b == NULL)
+            continue;
         Json::Value val;
-        val["cmd"]="groupchat_reply";
-        val["groupname"]=groupname;
-        val["from"]=username;
-        val["text"]=text;
-        thread_write_data(b,val);
+        val["cmd"] = "groupchat_reply";
+        val["groupname"] = groupname;
+        val["from"] = username;
+        val["text"] = text;
+        thread_write_data(b, val);
     }
 }
 
-void ChatThread::thread_transer_file(struct bufferevent* bev,const Json::Value& v)
+void ChatThread::thread_transer_file(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string username=v["username"].asString();
-    std::string friendname=v["friendname"].asString();
-    std::string filename=v["filename"].asString();
-    std::string filelength=v["filelength"].asString();
-    std::string step=v["step"].asString();
+    std::string username = v["username"].asString();
+    std::string friendname = v["friendname"].asString();
+    std::string filename = v["filename"].asString();
+    std::string filelength = v["filelength"].asString();
+    std::string step = v["step"].asString();
     Json::Value val;
-    //判断对方是否在线
-    struct bufferevent* b=info->list_friend_online(friendname);
-    if(b==NULL)
+    // 判断对方是否在线
+    struct bufferevent *b = info->list_friend_online(friendname);
+    if (b == NULL)
     {
-        val["cmd"]="file_reply";
-        val["result"]="offline";
-        thread_write_data(bev,val);
+        val["cmd"] = "file_reply";
+        val["result"] = "offline";
+        thread_write_data(bev, val);
         return;
     }
-    //对step判断
-    if(step=="1")
+    // 对step判断
+    if (step == "1")
     {
-        val["cmd"]="file_name";
-        val["filename"]=filename;
-        val["filelength"]=filelength;
-        val["fromuser"]=username;
-    }   
-    else if(step=="2")
-    {
-        std::string text=v["text"].asString();
-        val["cmd"]="file_transfer";
-        val["text"]=text;
+        val["cmd"] = "file_name";
+        val["filename"] = filename;
+        val["filelength"] = filelength;
+        val["fromuser"] = username;
     }
-    else if(step=="3")
+    else if (step == "2")
     {
-        val["cmd"]="file_end";
-    }   
-    thread_write_data(b,val);
+        std::string text = v["text"].asString();
+        val["cmd"] = "file_transfer";
+        val["text"] = text;
+    }
+    else if (step == "3")
+    {
+        val["cmd"] = "file_end";
+    }
+    thread_write_data(b, val);
 }
 
-void ChatThread::thread_client_offline(struct bufferevent* bev,const Json::Value& v)
+void ChatThread::thread_client_offline(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string username=v["username"].asString();
-    
-    //删除info的online_user中的客户端事件
+    std::string username = v["username"].asString();
+
+    // 删除info的online_user中的客户端事件
     info->list_delete_user(username);
 
-    //释放客户端事件
+    // 释放客户端事件
     bufferevent_free(bev);
 
-    //通知所有好友
-    std::string friendlist,grouplist;
+    // 通知所有好友
+    std::string friendlist, grouplist;
     db->database_connect();
-    //获取好友列表
-    db->database_get_friend_group(v,friendlist,grouplist);
+    // 获取好友列表
+    db->database_get_friend_group(v, friendlist, grouplist);
 
     db->database_disconnect();
 
     std::string Friend[1024];
 
-    if(friendlist.empty())  return;
-    //将好友列表解析到Friend数组
-    int num=thread_parse_string(friendlist,Friend);
-    //通知所有好友
-    for(int i=0;i<num;i++)
+    if (friendlist.empty())
+        return;
+    // 将好友列表解析到Friend数组
+    int num = thread_parse_string(friendlist, Friend);
+    // 通知所有好友
+    for (int i = 0; i < num; i++)
     {
-        struct bufferevent* b=info->list_friend_online(Friend[i]);
-        if(b==NULL) continue;
+        struct bufferevent *b = info->list_friend_online(Friend[i]);
+        if (b == NULL)
+            continue;
         Json::Value val;
-        val["cmd"]="friend_offline";
-        val["username"]=username;
-        thread_write_data(b,val);
+        val["cmd"] = "friend_offline";
+        val["username"] = username;
+        thread_write_data(b, val);
     }
+}
+
+void ChatThread::thread_query_user_by_uid(struct bufferevent* bev,const Json::Value& v)
+{
+    Json::Value val;
+    if(!v.isMember("uid"))
+    {
+        val["cmd"]="invaild_request";
+        thread_write_data(bev,val);
+        return;
+    }
+    uint64_t uid=v["uid"].asUInt64();
+    db->database_connect();
+    if(!db->database_user_is_exist_by_uid(uid))
+    {
+        val["cmd"]="not_exist";
+        thread_write_data(bev,val);
+        db->database_disconnect();
+        return;
+    }
+    val["cmd"]="query_uid_reply";
+    val["uid"]=Json::Value::UInt64(uid);
+    val["username"]=db->database_get_username_by_uid(uid);
+    if(info->list_friend_online(std::to_string(uid)))   val["status"]="online";
+    else    val["status"]="offline";
+    val["request_id"]=v["request_id"];
+    thread_write_data(bev,val);
+    db->database_disconnect();
 }

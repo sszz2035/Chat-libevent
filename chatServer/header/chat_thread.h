@@ -156,6 +156,13 @@ private:
     */
     void thread_client_offline(struct bufferevent* bev,const Json::Value& v);
 
+    /**
+     * @brief 处理客户端查询用户信息事件
+     * @param bev 发出请求的客户端事件
+     * @param v 要查询的用户信息
+    */
+    void thread_query_user_by_uid(struct bufferevent* bev,const Json::Value& v);
+
     // 事件集合
     std::unique_ptr<struct event_base,EventBaseDeleter>base;
     // 线程

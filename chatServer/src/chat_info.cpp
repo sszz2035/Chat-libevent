@@ -88,7 +88,7 @@ struct bufferevent* ChatInfo::list_friend_online(const std::string& user)
     //上锁
     std::unique_lock<std::mutex>lock(list_mutex);
     auto it=std::find_if(online_user->begin(),online_user->end(),[user](const User& u)->bool{
-        return user==u.name;
+        return std::stoull(user)==u.uid;
         });
     if(it!=online_user->end())
     {
