@@ -45,6 +45,9 @@ qt_add_executable(chatclient
     src/core/pagedata.h
 
     src/core/clientrequesthandler.h src/core/clientrequesthandler.cpp
+    src/utils/log/logfile.h src/utils/log/logfile.cpp
+    src/utils/get-time/GetCurTime.cpp
+    src/utils/get-time/GetCurTime.h
 
 
 )

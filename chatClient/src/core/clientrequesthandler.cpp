@@ -2,6 +2,7 @@
 #include<mutex>
 #include<QRandomGenerator>
 #include<QDateTime>
+#include"utils/log/logfile.h"
 static std::mutex m;
 
 ClientRequestHandler* ClientRequestHandler::instance=nullptr;
@@ -49,13 +50,13 @@ void ClientRequestHandler::queryUserInfoByUid(const qint32 &uid, QueryCallback c
     send_data["uid"] = uid;
     send_data["request_id"] = requestId;
     
-    qDebug() << "Sending request:" << requestId << "for uid:" << uid;
+    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Sending request: " + requestId + " for uid: " + QString::number(uid));
     ClientConServer::getInstance()->clinet_write_data(send_data);
     
     // 启动超时检查
     if (!m_timeoutTimer.isActive()) {
         m_timeoutTimer.start(5000); // 5秒超时检查
-        qDebug() << "Started timeout check timer";
+        SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Started timeout check timer");
     }
 }
 
@@ -95,7 +96,7 @@ void ClientRequestHandler::client_reply_info()
             callback(obj);
         }
         else {
-            qDebug() << "Received response for unknown request:" << requestId;
+            SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Received response for unknown request: " + requestId);
         }
         
         // 如果没有待处理请求，停止定时器
@@ -147,7 +148,7 @@ void ClientRequestHandler::cleanupTimeoutRequests()
         // 移除超时请求
         for (const QString& requestId : timeoutRequests) {
             m_pendingRequests.remove(requestId);
-            qDebug() << "Request timeout:" << requestId;
+            SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Request timeout: " + requestId);
         }
         
         // 如果没有待处理请求，停止定时器

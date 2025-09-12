@@ -1,6 +1,7 @@
 #include "ArchPage.h"
 #include "addpage.h"
 #include "creategrouppage.h"
+#include"utils/log/logfile.h"
 
 // #include "../CommonFunc.hpp"
 #include "aboutpage.h"
@@ -69,7 +70,7 @@ UserInfo ArchPage::getUserInfo()
  void ArchPage::convertUserInfoToFriendshipData(UserInfo *userInfo)
 {
     if (!userInfo) {
-        qDebug() << "Error: userInfo is null in convertUserInfoToContactData";
+        SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Error: userInfo is null in convertUserInfoToContactData");
         return;
     }
     // 解析好友列表和群组列表
@@ -114,7 +115,7 @@ UserInfo ArchPage::getUserInfo()
         }
         else
         {
-            qDebug()<<"Invalid friend ID format:"<<friendId;
+            SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Invalid friend ID format: " + friendId);
         }
     }
     //处理群组数据
@@ -406,11 +407,10 @@ void ArchPage::initConnectFunc() {
     
     // 连接缓存更新信号
     connect(this, &ArchPage::cacheUpdated, this, [this]() {
-        qDebug()<<"Cache updated, size:"<<cache.size();
+        SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Cache updated, size: " + QString::number(cache.size()));
         for(auto f:cache)
         {
-           qDebug()<<"好友信息:";
-           qDebug()<<f.friendName<<" "<<f.friendSSID<<" "<<f.friendType <<" "<<f.ssid<<" "<<f.status;
+           SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "好友信息: " + f.friendName + " " + QString::number(f.friendSSID) + " " + QString::number(f.friendType) + " " + QString::number(f.ssid) + " " + f.status);
         }
         ContactPage::getInstance()->loadCacheContact(cache);
     });
