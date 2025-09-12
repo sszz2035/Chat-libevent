@@ -64,74 +64,90 @@ struct event_base *ChatThread::thread_get_base()
 void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
 {
     ChatThread *t = (ChatThread *)ctx;
-    char buf[1024];
-    memset(buf, 0, sizeof(buf));
-    if (!t->thread_read_data(bev, buf))
+    
+    // 循环处理缓冲区中的所有数据包
+    while (true)
     {
-        LOG_PERROR("thread_read_data");
-        return;
-    }
-    std::cout << "--thread " << t->thread_get_id() << " receive data " << buf << std::endl;
+        char buf[8192]; // 增大缓冲区以处理更大的数据包
+        memset(buf, 0, sizeof(buf));
+        
+        // 检查是否有足够的数据读取长度字段
+        struct evbuffer *input = bufferevent_get_input(bev);
+        size_t available = evbuffer_get_length(input);
+        if (available < 4)
+        {
+            break; // 没有足够的数据读取长度，等待下次回调
+        }
+        
+        // 尝试读取一个完整的数据包
+        if (!t->thread_read_data(bev, buf, sizeof(buf)))
+        {
+            LOG_PERROR("thread_read_data");
+            return;
+        }
+        
+        std::cout << "--thread " << t->thread_get_id() << " receive data " << buf << std::endl;
 
-    // 解析json数据
-    Json::Reader reader; // json 解析对象
-    Json::Value val;     // json存储的容器 类似于map
+        // 解析json数据
+        Json::Reader reader; // json 解析对象
+        Json::Value val;     // json存储的容器 类似于map
 
-    if (!reader.parse(buf, val))
-    {
-        LOG_PERROR("parse");
-        return;
-    }
-    // 处理注册事件
-    if (val["cmd"] == "register")
-    {
-        // std::cout<<"客户端注册"<<std::endl;
-        t->thread_register(bev, val);
-    }
-    // 处理登录事件
-    else if (val["cmd"] == "login")
-    {
-        t->thread_login(bev, val);
-    }
-    // 处理添加好友事件
-    else if (val["cmd"] == "addfriend")
-    {
-        t->thread_add_friend(bev, val);
-    }
-    // 处理私聊事件
-    else if (val["cmd"] == "private")
-    {
-        t->thread_private_chat(bev, val);
-    }
-    // 处理添加群组事件
-    else if (val["cmd"] == "creategroup")
-    {
-        t->thread_create_group(bev, val);
-    }
-    // 处理加入群聊事件
-    else if (val["cmd"] == "joingroup")
-    {
-        t->thread_join_group(bev, val);
-    }
-    // 处理群聊事件
-    else if (val["cmd"] == "groupchat")
-    {
-        t->thread_group_chat(bev, val);
-    }
-    // 处理文件传输事件
-    else if (val["cmd"] == "file")
-    {
-        t->thread_transer_file(bev, val);
-    }
-    // 处理客户端下线事件
-    else if (val["cmd"] == "offline")
-    {
-        t->thread_client_offline(bev, val);
-    }
-    // 处理查询用户uid事件
-    else if(val["cmd"]=="query_by_uid")
-    {
-        t->thread_query_user_by_uid(bev,val);
+        if (!reader.parse(buf, val))
+        {
+            LOG_PERROR("parse");
+            return;
+        }
+        // 处理注册事件
+        if (val["cmd"] == "register")
+        {
+            // std::cout<<"客户端注册"<<std::endl;
+            t->thread_register(bev, val);
+        }
+        // 处理登录事件
+        else if (val["cmd"] == "login")
+        {
+            t->thread_login(bev, val);
+        }
+        // 处理添加好友事件
+        else if (val["cmd"] == "addfriend")
+        {
+            t->thread_add_friend(bev, val);
+        }
+        // 处理私聊事件
+        else if (val["cmd"] == "private")
+        {
+            t->thread_private_chat(bev, val);
+        }
+        // 处理添加群组事件
+        else if (val["cmd"] == "creategroup")
+        {
+            t->thread_create_group(bev, val);
+        }
+        // 处理加入群聊事件
+        else if (val["cmd"] == "joingroup")
+        {
+            t->thread_join_group(bev, val);
+        }
+        // 处理群聊事件
+        else if (val["cmd"] == "groupchat")
+        {
+            t->thread_group_chat(bev, val);
+        }
+        // 处理文件传输事件
+        else if (val["cmd"] == "file")
+        {
+            t->thread_transer_file(bev, val);
+        }
+        // 处理客户端下线事件
+        else if (val["cmd"] == "offline")
+        {
+            t->thread_client_offline(bev, val);
+        }
+        // 处理查询用户uid事件
+        else if(val["cmd"]=="query_by_uid")
+        {
+            t->thread_query_user_by_uid(bev,val);
+        }
     }
 }
 
@@ -149,28 +165,66 @@ void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ct
     }
 }
 
-bool ChatThread::thread_read_data(struct bufferevent *bev, char *s)
+bool ChatThread::thread_read_data(struct bufferevent *bev, char *s, size_t buffer_size)
 {
     // 要读取的长度
     int sz = 0;
     // 先读取长度，放入sz中
     if (bufferevent_read(bev, &sz, 4) != 4)
     {
-        LOG_PERROR("bufferevent_read");
+        LOG_PERROR("bufferevent_read length");
         return false;
     }
+    
+    // 检查数据长度是否合理
+    if (sz <= 0 || sz > 10240) // 限制最大10KB
+    {
+        LOG_ERROR("Invalid data size: %d", sz);
+        return false;
+    }
+    
+    // 检查目标缓冲区是否有足够空间
+    if (sz >= buffer_size)
+    {
+        LOG_ERROR("Buffer too small for data size: %d", sz);
+        return false;
+    }
+    
     size_t count = 0;
     char buf[1024] = {0};
-    while (1)
+    
+    while (count < sz)
     {
-        // count加上读取到的字符个数
-        count += bufferevent_read(bev, buf, 1024);
-        strcat(s, buf);
+        // 计算本次需要读取的字节数
+        size_t bytes_to_read = sz - count;
+        if (bytes_to_read > sizeof(buf))
+            bytes_to_read = sizeof(buf);
+        
+        // 读取数据
+        ssize_t bytes_read = bufferevent_read(bev, buf, bytes_to_read);
+        if (bytes_read <= 0)
+        {
+            LOG_PERROR("bufferevent_read data");
+            return false;
+        }
+        
+        // 安全地拷贝数据到目标缓冲区
+        size_t remaining_space = buffer_size - count - 1; // -1 for null terminator
+        if (bytes_read > remaining_space)
+        {
+            LOG_ERROR("Buffer overflow prevented");
+            return false;
+        }
+        
+        memcpy(s + count, buf, bytes_read);
+        count += bytes_read;
+        
+        // 清空临时缓冲区
         memset(buf, 0, sizeof(buf));
-        // 读取到的字符个数>=要读取的字符个数
-        if (count >= sz)
-            break;
     }
+    
+    // 确保字符串以null结尾
+    s[count] = '\0';
     return true;
 }
 

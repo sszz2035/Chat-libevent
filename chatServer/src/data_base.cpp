@@ -205,7 +205,7 @@ void DataBase::database_insert_user_info(Json::Value& v, uint64_t uid)
     }
     
     char sql[256]={0};
-    sprintf(sql,"INSERT INTO chat_user(uid,username,password) VALUES(%llu,'%s','%s');",uid,username.c_str(),password.c_str());
+    sprintf(sql,"INSERT INTO chat_user(uid,username,password,friendlist) VALUES(%llu,'%s','%s','%s');",uid,username.c_str(),password.c_str(),std::to_string(uid).c_str());
     exec_update(sql);
 }
 
