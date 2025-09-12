@@ -43,7 +43,7 @@ public:
     void addContactInfo(const QString& groupingName,const FriendshipData& info);
 
     QList<QString> getFriendGrouping();
-    // bool loadCacheContact(const QList<FriendshipDTO>& caches);
+    bool loadCacheContact(const QList<FriendshipData>& caches);
 
     // get update data
     QHash<QString,QString> getUpdateGrouping();

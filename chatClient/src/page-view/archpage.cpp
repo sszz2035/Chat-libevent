@@ -409,8 +409,10 @@ void ArchPage::initConnectFunc() {
         qDebug()<<"Cache updated, size:"<<cache.size();
         for(auto f:cache)
         {
+           qDebug()<<"好友信息:";
            qDebug()<<f.friendName<<" "<<f.friendSSID<<" "<<f.friendType <<" "<<f.ssid<<" "<<f.status;
         }
+        ContactPage::getInstance()->loadCacheContact(cache);
     });
 }
 

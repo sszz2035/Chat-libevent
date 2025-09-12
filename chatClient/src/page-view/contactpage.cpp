@@ -50,17 +50,19 @@ void ContactPage::addFriendGrouping(const QString &name) {
 //     return _groupingInfos["friend"].keys().toList();
 // }
 
-// bool ContactPage::loadCacheContact(const QList<FriendshipDTO> &caches) {
-//     for (auto &it : caches) {
-//         bool isGroup = (it.friendType==2);
-//         if (!isGroup) {
+bool ContactPage::loadCacheContact(const QList<FriendshipData> &caches)
+{
+    for (auto &it : caches) {
+        bool isGroup = (it.friendType==2);
+        if (!isGroup) {
 //             UserBaseInfoDTO uInfo = g_pCommonData->getUserInfoBySSID(it.friendSSID);
-//             addFriendGrouping(it.groupingName);
-//             addContactInfo(it.groupingName,{
-//                                                 uInfo,{},{},
-//                                                 "",-1,false
-//                                             });
-//         }else {
+               UserBaseInfoData uInfo;
+               uInfo.ssid=it.friendSSID;
+               uInfo.username=it.friendName;
+               addFriendGrouping(it.groupingName);
+            addContactInfo(it.groupingName,{uInfo,{},{},it.status,false});
+        }
+        // else {
 //             GroupBaseInfoDTO gInfo = g_pCommonData->getGroupInfoDataBySSID(it.friendSSID);
 //             QList<GroupMemberInfoDTO> members = g_pCommonData->getGroupMemberInfoData(it.friendSSID,100,1);
 //             addContactInfo(it.groupingName,{
@@ -68,9 +70,9 @@ void ContactPage::addFriendGrouping(const QString &name) {
 //                                                 "",-1,true
 //                                             });
 //         }
-//     }
-//     return true;
-// }
+    }
+    return true;
+}
 
 ElaTreeView * ContactPage::getFriendTreeView() {
     auto cpObj = new ElaTreeView();
