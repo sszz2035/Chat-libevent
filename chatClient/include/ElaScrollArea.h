@@ -3,7 +3,7 @@
 
 #include <QScrollArea>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaScrollAreaPrivate;
 class ELA_EXPORT ElaScrollArea : public QScrollArea

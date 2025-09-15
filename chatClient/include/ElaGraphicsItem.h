@@ -6,7 +6,7 @@
 #include <QObject>
 #include <QPainter>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaGraphicsScene;
 class ElaGraphicsItemPrivate;
 class ELA_EXPORT ElaGraphicsItem : public QGraphicsObject

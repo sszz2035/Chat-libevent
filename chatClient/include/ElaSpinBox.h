@@ -3,22 +3,18 @@
 
 #include <QSpinBox>
 
-#include "ElaDef.h"
+#include "stdafx.h"
 
 class ElaSpinBoxPrivate;
 class ELA_EXPORT ElaSpinBox : public QSpinBox
 {
     Q_OBJECT
     Q_Q_CREATE(ElaSpinBox)
-    Q_PROPERTY_CREATE_Q_H(ElaSpinBoxType::ButtonMode, ButtonMode)
 public:
     explicit ElaSpinBox(QWidget* parent = nullptr);
-    ~ElaSpinBox() override;
+    ~ElaSpinBox();
 
 protected:
-    void focusInEvent(QFocusEvent* event) override;
-    void focusOutEvent(QFocusEvent* event) override;
-    void paintEvent(QPaintEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
 };
 

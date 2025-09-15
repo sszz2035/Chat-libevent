@@ -3,7 +3,7 @@
 
 #include <QLCDNumber>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaLCDNumberPrivate;
 class ELA_EXPORT ElaLCDNumber : public QLCDNumber

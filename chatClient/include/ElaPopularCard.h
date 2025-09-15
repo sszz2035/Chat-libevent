@@ -4,7 +4,7 @@
 #include <QPixmap>
 #include <QWidget>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaPopularCardPrivate;
 class ELA_EXPORT ElaPopularCard : public QWidget
 {
@@ -16,12 +16,12 @@ class ELA_EXPORT ElaPopularCard : public QWidget
     Q_PROPERTY_CREATE_Q_H(QString, SubTitle)
     Q_PROPERTY_CREATE_Q_H(QString, InteractiveTips)
     Q_PROPERTY_CREATE_Q_H(QString, DetailedText)
-    Q_PROPERTY_CREATE_Q_H(QString, CardButtonText)
+    Q_PROPERTY_CREATE_Q_H(QString, CardButtontext)
     Q_PROPERTY_CREATE_Q_H(QWidget*, CardFloatArea)
     Q_PROPERTY_CREATE_Q_H(QPixmap, CardFloatPixmap)
 public:
     explicit ElaPopularCard(QWidget* parent = nullptr);
-    ~ElaPopularCard() override;
+    ~ElaPopularCard();
 Q_SIGNALS:
     Q_SIGNAL void popularCardClicked();
     Q_SIGNAL void popularCardButtonClicked();

@@ -3,7 +3,7 @@
 
 #include <QCheckBox>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ELA_EXPORT ElaCheckBox : public QCheckBox
 {
     Q_OBJECT
@@ -11,7 +11,7 @@ class ELA_EXPORT ElaCheckBox : public QCheckBox
 public:
     explicit ElaCheckBox(QWidget* parent = nullptr);
     explicit ElaCheckBox(const QString& text, QWidget* parent = nullptr);
-    ~ElaCheckBox() override;
+    ~ElaCheckBox();
 };
 
 #endif // ELACHECKBOX_H

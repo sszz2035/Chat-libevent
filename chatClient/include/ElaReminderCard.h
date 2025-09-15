@@ -3,7 +3,7 @@
 
 #include <QPushButton>
 
-#include "ElaDef.h"
+#include "Def.h"
 class ElaReminderCardPrivate;
 class ELA_EXPORT ElaReminderCard : public QPushButton
 {

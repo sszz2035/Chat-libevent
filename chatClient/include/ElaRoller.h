@@ -1,7 +1,7 @@
 #ifndef ELAFRAMEWORK_ELAWIDGETTOOLS_INCLUDE_ELAROLLER_H_
 #define ELAFRAMEWORK_ELAWIDGETTOOLS_INCLUDE_ELAROLLER_H_
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 #include <QWidget>
 
 class ElaRollerPrivate;

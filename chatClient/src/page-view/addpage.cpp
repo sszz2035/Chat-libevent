@@ -5,7 +5,7 @@
 #include "ElaSuggestBox.h"
 #include "ElaTheme.h"
 #include "ElaToolButton.h"
-
+#include<QJsonArray>
 #include "effect-component/ssmaskwidget.h"
 #include "effect-component/loadingdialog.h"
 
@@ -20,6 +20,12 @@ AddPage::AddPage() {
     initContent();
 
     initConnectFunc();
+
+    UserBaseInfoData data;
+    data.username="张棋";
+    data.avatarPath="";
+    data.ssid=2035797167;
+    sltAddUserRes(data);
 }
 
 AddPage::~AddPage() {
@@ -46,35 +52,34 @@ void AddPage::sltHideLoading() {
     sltHideMaskEffect();
 }
 
-// void AddPage::sltAddUserRes(const UserBaseInfoDTO &dto) {
-//     ElaInteractiveCard * card = new ElaInteractiveCard(this);
-//     ElaToolButton * addBtn = new ElaToolButton(card);
+void AddPage::sltAddUserRes(const UserBaseInfoData &data) {
+    ElaInteractiveCard * card = new ElaInteractiveCard(this);
+    ElaToolButton * addBtn = new ElaToolButton(card);
 
-//     //1
-//     // QString avatar = (dto.avatarPath=="-1"||dto.avatarPath.isEmpty())?":/arch-page/rc-page/img/SS-default-icon.jpg":dto.avatarPath;
-//     QString avatar="";
-//     // card->setCardPixmap(avatar);
-//     // card->setTitle(dto.username + " (" + dto.ssid + ")");
-//     // card->setSubTitle(dto.personalSign);
-//     card->setFixedSize({width(),80});
-//     card->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
+    //1
+    QString avatar = (data.avatarPath=="-1"||data.avatarPath.isEmpty())?":/include/Image/Cirno.jpg":data.avatarPath;
+    card->setCardPixmap(avatar);
+    card->setTitle(data.username) ;//+ " (" + data.ssid + ")")
+    card->setSubTitle(QString::number(data.ssid));
+    card->setFixedSize({width(),80});
+    card->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
 
-//     addBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
-//     addBtn->setElaIcon(ElaIconType::Plus);
-//     addBtn->setBorderRadius(10);
-//     addBtn->setFixedSize(30,30);
-//     addBtn->move(card->pos().x() + card->width() - 70,card->pos().y() + card->height() / 2 - 15);
+    addBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    addBtn->setElaIcon(ElaIconType::Plus);
+    addBtn->setBorderRadius(10);
+    addBtn->setFixedSize(30,30);
+    addBtn->move(card->pos().x() + card->width() - 70,card->pos().y() + card->height() / 2 - 15);
 
-//     _userResLayout->insertWidget(_userResLayout->count()-1,card);
-//     //2
-//     // _userResMap.insert(dto.ssid,card);
+    _userResLayout->insertWidget(_userResLayout->count()-1,card);
+    //2
+    _userResMap.insert(QString::number(data.ssid),card);
 
-//     // 绑定按钮消息
-//     connect(addBtn,&ElaToolButton::clicked,[=]() {
-//     //3
-//         // emit sigAddBtnClicked(dto.ssid,false);
-//     });
-// }
+    // 绑定按钮消息
+    connect(addBtn,&ElaToolButton::clicked,[=]() {
+    //3
+        // emit sigAddBtnClicked(data.ssid,false);
+    });
+}
 
 // void AddPage::sltAddGroupRes(const GroupBaseInfoDTO &dto) {
 //     ElaInteractiveCard * card = new ElaInteractiveCard(this);
@@ -204,14 +209,34 @@ void AddPage::initConnectFunc() {
         emit sigHideArchPageMaskEffect();
         this->hide();
     });
+    // 搜索
+    connect(_search,&ElaSuggestBox::sigEnterPressed,[=](const QString& content) {
+        sltShowLoading();
+        _closeBtn->raise();
+        emit ClientRequestHandler::getInstance()->queryFuzzySearchRequest(content,false,[this](const QJsonObject& obj){
+            sltHideLoading();
+            //清空原有结果
+            for(auto it=_userResMap.begin();it!=_userResMap.end();it++)
+            {
+                _userResLayout->removeWidget(it.value());
+                it.value()->deleteLater();
+            }
+            _userResMap.clear();
 
-    // 搜索 7
-    // connect(_search,&ElaSuggestBox::sigEnterPressed,[=](const QString& content) {
-    //     sltShowLoading();
-    //     _closeBtn->raise();
-    //
-    //     // emit g_pCommonData->sigFuzzySearchRequest(content,_typeSwitch->getCurrentIndex()!=0);
-    // });
+            if(obj.contains("data")&&obj["data"].isArray())
+            {
+                for(QJsonValue val:obj["data"].toArray())
+                {
+                    UserBaseInfoData data;
+                    data.ssid=val["uid"].toString().toInt();
+                    data.username=val["username"].toString();
+                    data.avatarPath="";
+                    sltAddUserRes(data);
+                }
+            }
+        });
+        // emit g_pCommonData->sigFuzzySearchRequest(content,_typeSwitch->getCurrentIndex()!=0);
+    });
 
     //8
     // connect(g_pCommonData,&CommonData::sigFuzzySearchFriendResponse,this,[=](QList<UserBaseInfoDTO> dto,int waitCount) {
@@ -270,8 +295,8 @@ void AddPage::paintEvent(QPaintEvent *event) {
     painter.drawRoundedRect(rect(), 20, 20);
 
     // 绘制按钮栏背景
-    // painter.setBrush(ElaThemeColor(eTheme->getThemeMode(), DialogLayoutArea));
-    // painter.drawRoundedRect(QRectF(0, height() - 60, width(), 60), 8, 8);
+    painter.setBrush(ElaThemeColor(eTheme->getThemeMode(), DialogLayoutArea));
+    painter.drawRoundedRect(QRectF(0, height() - 60, width(), 60), 8, 8);
 
     QWidget::paintEvent(event);
 }

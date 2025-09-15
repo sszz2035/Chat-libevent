@@ -2,7 +2,7 @@
 #define ELABREADCRUMBBAR_H
 #include <QWidget>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaBreadcrumbBarPrivate;
 class ELA_EXPORT ElaBreadcrumbBar : public QWidget

@@ -80,6 +80,7 @@ void ClientRequestHandler::client_reply_info()
         LandPage::getInstance()->login_handler(obj);
     }
 
+    //根据id查询用户信息
     else if(obj.value("cmd").toString()=="query_uid_reply")
     {
         QString requestId = obj.value("request_id").toString();
@@ -107,6 +108,61 @@ void ClientRequestHandler::client_reply_info()
             }
         }
     }
+    //模糊查询信息回复
+    else if(obj.value("cmd").toString()=="search_reply")
+    {
+        //执行回调函数
+        QueryCallback callback;
+        QString requestId =obj["request_id"].toString();
+        {
+            std::lock_guard<std::mutex>lock(m_requestsMutex);
+            if(m_pendingRequests.contains(requestId))
+            {
+                callback=m_pendingRequests.take(requestId);
+            }
+        }
+        if(callback)
+        {
+            callback(obj);
+        }
+        else {
+            SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Received response for unknown request: " + requestId);
+        }
+        //如果没有待处理请求 停止计时器
+        {
+            std::lock_guard<std::mutex> lock(m_requestsMutex);
+
+            if(m_pendingRequests.isEmpty())
+            {
+                m_timeoutTimer.stop();
+            }
+        }
+    }
+
+}
+
+void ClientRequestHandler::queryFuzzySearchRequsetHandler(const QString &content, bool isGroup, QueryCallback callback)
+{
+    //生成请求ID
+    QString requestId=generateRequestId();
+    //储存回调函数
+    {
+        std::lock_guard<std::mutex> lock(m_requestsMutex);
+        m_pendingRequests[requestId]=callback;
+    }
+    QJsonObject obj;
+    obj.insert("cmd","fuzzy_search");
+    obj.insert("request_id",requestId);
+    obj.insert("content",content);
+    if(isGroup) obj.insert("type","group");
+    else        obj.insert("type","friend");
+    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Sending request: " + requestId );
+    ClientConServer::getInstance()->clinet_write_data(obj);
+    //启动超时检查
+    if(!m_timeoutTimer.isActive())
+    {
+        m_timeoutTimer.start(5000);
+    }
 }
 
 ClientRequestHandler::ClientRequestHandler()
@@ -114,6 +170,8 @@ ClientRequestHandler::ClientRequestHandler()
     // 设置超时定时器
     m_timeoutTimer.setSingleShot(false);
     connect(&m_timeoutTimer, &QTimer::timeout, this, &ClientRequestHandler::cleanupTimeoutRequests);
+
+    connect(this,&ClientRequestHandler::queryFuzzySearchRequest,&ClientRequestHandler::queryFuzzySearchRequsetHandler);
 }
 
 ClientRequestHandler::~ClientRequestHandler()

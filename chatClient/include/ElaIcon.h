@@ -2,9 +2,9 @@
 #define ELAICON_H
 #include <QIcon>
 
-#include "ElaDef.h"
-#include "ElaProperty.h"
-#include "ElaSingleton.h"
+#include "Def.h"
+#include "singleton.h"
+#include "stdafx.h"
 class ELA_EXPORT ElaIcon
 {
     Q_SINGLETON_CREATE_H(ElaIcon)

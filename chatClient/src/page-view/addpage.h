@@ -10,8 +10,10 @@
 #include <QWidget>
 #include <QVBoxLayout>
 #include<ElaSuggestBox.h>
-// struct GroupBaseInfoDTO;
-// struct UserBaseInfoDTO;
+#include <ElaInteractiveCard.h>
+#include"core/pagedata.h"
+#include"core/clientrequesthandler.h"
+
 
 class ElaSuggestBox;
 class ElaPivot;
@@ -31,7 +33,7 @@ signals:
     void sigHideArchPageMaskEffect();
     void sigAddBtnClicked(const QString& ssid, bool isGroup);
 public slots:
-    // void sltAddUserRes(const UserBaseInfoDTO& dto);
+    void sltAddUserRes(const UserBaseInfoData& dto);
     // void sltAddGroupRes(const GroupBaseInfoDTO& dto);
 
     void sltShowMaskEffect();

@@ -19,11 +19,13 @@ public:
     // 异步查询用户信息
     using QueryCallback = std::function<void(const QJsonObject&)>;
     void queryUserInfoByUid(const qint32 &uid, QueryCallback callback);
-    
 signals:
     void userInfoReceived(const QJsonObject& userInfo);
+    //模糊搜索请求
+    void queryFuzzySearchRequest(const QString& content,bool isGroup,QueryCallback callback);
 public slots:
     void client_reply_info();
+    void queryFuzzySearchRequsetHandler(const QString& content,bool isGroup,QueryCallback callback);
 
 private:
     explicit ClientRequestHandler();

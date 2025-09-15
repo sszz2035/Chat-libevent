@@ -3,7 +3,7 @@
 
 #include <QWidget>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaScrollArea;
 class ElaText;
 class QHBoxLayout;

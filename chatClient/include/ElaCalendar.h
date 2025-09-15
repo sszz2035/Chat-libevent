@@ -3,7 +3,7 @@
 
 #include <QWidget>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaCalendarPrivate;
 class ELA_EXPORT ElaCalendar : public QWidget
 {

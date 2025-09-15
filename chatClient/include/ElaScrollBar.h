@@ -4,7 +4,7 @@
 #include <QAbstractScrollArea>
 #include <QScrollBar>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaScrollBarPrivate;
 class ELA_EXPORT ElaScrollBar : public QScrollBar

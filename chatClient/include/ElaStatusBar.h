@@ -3,13 +3,13 @@
 
 #include <QStatusBar>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ELA_EXPORT ElaStatusBar : public QStatusBar
 {
     Q_OBJECT
 public:
     explicit ElaStatusBar(QWidget* parent = nullptr);
-    ~ElaStatusBar() override;
+    ~ElaStatusBar();
 };
 
 #endif // ELASTATUSBAR_H

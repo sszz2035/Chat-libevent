@@ -3,7 +3,7 @@
 
 #include <QGraphicsPathItem>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaGraphicsItem;
 class ElaGraphicsLineItemPrivate;
 class ELA_EXPORT ElaGraphicsLineItem : public QGraphicsPathItem

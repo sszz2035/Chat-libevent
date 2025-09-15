@@ -3,7 +3,7 @@
 
 #include <QPushButton>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaPushButtonPrivate;
 class ELA_EXPORT ElaPushButton : public QPushButton
 {

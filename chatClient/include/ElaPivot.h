@@ -2,7 +2,7 @@
 #define ELAPIVOT_H
 #include <QWidget>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaPivotPrivate;
 class ELA_EXPORT ElaPivot : public QWidget

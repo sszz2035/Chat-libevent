@@ -120,10 +120,10 @@ void LandPage::initUI()
     avatarLabel->setPixmap(avatarPixmap.scaled(labelSize, labelSize, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
 
     //创建用户名comboBox
-    usernameCombo = new ElaComboBox(this);
+    usernameCombo = new QComboBox(this);
     usernameCombo->setEditable(true);
     usernameCombo->setPlaceholderText("请输入用户名");
-    usernameCombo->setFixedSize(260, 35);
+    usernameCombo->setFixedSize(252, 40);
 
     //创建密码输入框
     passwordEdit = new ElaLineEdit(this);

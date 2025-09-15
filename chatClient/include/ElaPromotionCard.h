@@ -2,7 +2,7 @@
 #define ELAPROMOTIONCARD_H
 #include <QWidget>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaPromotionCardPrivate;
 class ELA_EXPORT ElaPromotionCard : public QWidget
 {

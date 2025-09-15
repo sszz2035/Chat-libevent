@@ -3,8 +3,8 @@
 
 #include <QPushButton>
 
-#include "ElaDef.h"
-#include "ElaProperty.h"
+#include "Def.h"
+#include "stdafx.h"
 class ElaIconButtonPrivate;
 class ELA_EXPORT ElaIconButton : public QPushButton
 {

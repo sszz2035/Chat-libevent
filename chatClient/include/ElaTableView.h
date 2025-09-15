@@ -3,7 +3,7 @@
 
 #include <QTableView>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaTableViewPrivate;
 class ELA_EXPORT ElaTableView : public QTableView

@@ -63,7 +63,7 @@ private:
     QHBoxLayout *bottomLayout;
 
     QLabel *avatarLabel;
-    ElaComboBox *usernameCombo;
+    QComboBox *usernameCombo;
     ElaLineEdit *passwordEdit;
     ElaCheckBox *showPasswordCheck;
     QPushButton *loginButton;

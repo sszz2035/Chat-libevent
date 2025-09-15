@@ -3,7 +3,7 @@
 
 #include <QPlainTextEdit>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaPlainTextEditPrivate;
 class ELA_EXPORT ElaPlainTextEdit : public QPlainTextEdit

@@ -3,7 +3,7 @@
 
 #include <QWidget>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaImageCardPrivate;
 class ELA_EXPORT ElaImageCard : public QWidget

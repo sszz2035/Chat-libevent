@@ -4,7 +4,7 @@
 #include <QDialog>
 
 #include "ElaAppBar.h"
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaColorDialogPrivate;
 class ELA_EXPORT ElaColorDialog : public QDialog
 {
@@ -14,7 +14,7 @@ class ELA_EXPORT ElaColorDialog : public QDialog
     Q_TAKEOVER_NATIVEEVENT_H
 public:
     explicit ElaColorDialog(QWidget* parent = nullptr);
-    ~ElaColorDialog() override;
+    ~ElaColorDialog();
 
     QList<QColor> getCustomColorList() const;
     QColor getCustomColor(int index) const;

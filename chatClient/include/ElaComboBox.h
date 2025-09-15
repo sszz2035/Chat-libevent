@@ -3,7 +3,7 @@
 
 #include <QComboBox>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaComboBoxPrivate;
 class ELA_EXPORT ElaComboBox : public QComboBox
@@ -13,9 +13,7 @@ class ELA_EXPORT ElaComboBox : public QComboBox
     Q_PROPERTY_CREATE_Q_H(int, BorderRadius)
 public:
     explicit ElaComboBox(QWidget* parent = nullptr);
-    ~ElaComboBox() override;
-
-    void setEditable(bool editable);
+    ~ElaComboBox();
 
 protected:
     virtual void showPopup() override;

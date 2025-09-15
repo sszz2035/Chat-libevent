@@ -3,7 +3,7 @@
 
 #include <QRadioButton>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 class ElaRadioButtonPrivate;
 class ELA_EXPORT ElaRadioButton : public QRadioButton
 {

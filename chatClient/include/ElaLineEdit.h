@@ -3,7 +3,7 @@
 
 #include <QLineEdit>
 
-#include "ElaProperty.h"
+#include "stdafx.h"
 
 class ElaLineEditPrivate;
 class ELA_EXPORT ElaLineEdit : public QLineEdit
@@ -14,7 +14,7 @@ class ELA_EXPORT ElaLineEdit : public QLineEdit
     Q_PROPERTY_CREATE_Q_H(bool, IsClearButtonEnable)
 public:
     explicit ElaLineEdit(QWidget* parent = nullptr);
-    ~ElaLineEdit() override;
+    ~ElaLineEdit();
 
 Q_SIGNALS:
     Q_SIGNAL void focusIn(QString text);

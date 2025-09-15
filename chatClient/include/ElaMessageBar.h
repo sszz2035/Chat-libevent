@@ -3,8 +3,8 @@
 
 #include <QWidget>
 
-#include "ElaDef.h"
-#include "ElaProperty.h"
+#include "Def.h"
+#include "stdafx.h"
 
 class ElaMessageBarPrivate;
 class ELA_EXPORT ElaMessageBar : public QWidget
