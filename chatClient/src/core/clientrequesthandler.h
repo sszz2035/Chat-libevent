@@ -8,6 +8,7 @@
 #include <mutex>
 #include "utils/net-work/clientconserver.h"
 #include"page-view/landpage.h"
+#include"page-view/addpage.h"
 #include<QJsonObject>
 class ClientRequestHandler:public QObject
 {
@@ -23,10 +24,12 @@ signals:
     void userInfoReceived(const QJsonObject& userInfo);
     //模糊搜索请求
     void queryFuzzySearchRequest(const QString& content,bool isGroup,QueryCallback callback);
+    //好友申请结果回复
+    void addFriendResponse(const QJsonObject& obj);
 public slots:
     void client_reply_info();
     void queryFuzzySearchRequsetHandler(const QString& content,bool isGroup,QueryCallback callback);
-
+    void addFriendRequestHandler(const qint32& ssid,bool isGroup);
 private:
     explicit ClientRequestHandler();
     ClientRequestHandler(const ClientRequestHandler&);

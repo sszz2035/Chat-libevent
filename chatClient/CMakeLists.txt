@@ -48,6 +48,7 @@ qt_add_executable(chatclient
     src/utils/log/logfile.h src/utils/log/logfile.cpp
     src/utils/get-time/GetCurTime.cpp
     src/utils/get-time/GetCurTime.h
+    src/core/commondata.h src/core/commondata.cpp
 
 
 )
@@ -64,6 +65,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Network)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 target_link_libraries(chatclient
     PRIVATE
@@ -75,6 +77,7 @@ target_link_libraries(chatclient PRIVATE Qt6::Widgets)
 target_link_libraries(chatclient PRIVATE Qt6::Core Qt6::Network)
 target_link_libraries(chatclient PRIVATE Qt6::Core)
 target_link_libraries(chatclient PRIVATE Qt6::Widgets)
+target_link_libraries(chatclient PRIVATE Qt6::Core)
 target_link_libraries(chatclient PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)

@@ -40,7 +40,7 @@ public:
 
     void addFriendGrouping(const QString& name);
 
-    void addContactInfo(const QString& groupingName,const FriendshipData& info);
+    // void addContactInfo(const QString& groupingName,const FriendshipData& info);
 
     QList<QString> getFriendGrouping();
     bool loadCacheContact(const QList<FriendshipData>& caches);

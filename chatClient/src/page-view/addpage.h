@@ -31,7 +31,7 @@ public:
 
 signals:
     void sigHideArchPageMaskEffect();
-    void sigAddBtnClicked(const QString& ssid, bool isGroup);
+    void sigAddBtnClicked(const qint32& ssid, bool isGroup);
 public slots:
     void sltAddUserRes(const UserBaseInfoData& dto);
     // void sltAddGroupRes(const GroupBaseInfoDTO& dto);

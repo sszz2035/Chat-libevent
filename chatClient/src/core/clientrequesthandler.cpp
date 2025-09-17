@@ -2,7 +2,10 @@
 #include<mutex>
 #include<QRandomGenerator>
 #include<QDateTime>
+#include "core/commondata.h"
+#include "page-view/contactpage.h"
 #include"utils/log/logfile.h"
+#include"page-view/archpage.h"
 static std::mutex m;
 
 ClientRequestHandler* ClientRequestHandler::instance=nullptr;
@@ -69,6 +72,18 @@ void ClientRequestHandler::client_reply_info()
     }
     QJsonObject obj;
     obj=QJsonDocument::fromJson(ba).object();
+
+    //取出用户请求
+    QueryCallback callback;
+    QString requestId =obj.contains("request_id")?obj["request_id"].toString():"null";
+    {
+        std::lock_guard<std::mutex>lock(m_requestsMutex);
+        if(m_pendingRequests.contains(requestId))
+        {
+            callback=m_pendingRequests.take(requestId);
+        }
+    }
+
     //注册回复
     if(obj.value("cmd").toString()=="register_reply")
     {
@@ -84,15 +99,7 @@ void ClientRequestHandler::client_reply_info()
     else if(obj.value("cmd").toString()=="query_uid_reply")
     {
         QString requestId = obj.value("request_id").toString();
-        QueryCallback callback;
-        
-        {
-            std::lock_guard<std::mutex> lock(m_requestsMutex);
-            if (m_pendingRequests.contains(requestId)) {
-                callback = m_pendingRequests.take(requestId);
-            }
-        }
-        
+
         if (callback) {
             callback(obj);
         }
@@ -100,27 +107,11 @@ void ClientRequestHandler::client_reply_info()
             SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Received response for unknown request: " + requestId);
         }
         
-        // 如果没有待处理请求，停止定时器
-        {
-            std::lock_guard<std::mutex> lock(m_requestsMutex);
-            if (m_pendingRequests.isEmpty()) {
-                m_timeoutTimer.stop();
-            }
-        }
     }
     //模糊查询信息回复
     else if(obj.value("cmd").toString()=="search_reply")
     {
         //执行回调函数
-        QueryCallback callback;
-        QString requestId =obj["request_id"].toString();
-        {
-            std::lock_guard<std::mutex>lock(m_requestsMutex);
-            if(m_pendingRequests.contains(requestId))
-            {
-                callback=m_pendingRequests.take(requestId);
-            }
-        }
         if(callback)
         {
             callback(obj);
@@ -128,17 +119,34 @@ void ClientRequestHandler::client_reply_info()
         else {
             SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Received response for unknown request: " + requestId);
         }
-        //如果没有待处理请求 停止计时器
-        {
-            std::lock_guard<std::mutex> lock(m_requestsMutex);
 
-            if(m_pendingRequests.isEmpty())
-            {
-                m_timeoutTimer.stop();
-            }
-        }
+    }
+    //添加好友回复
+    else if(obj.value("cmd").toString()=="addfriend_reply")
+    {
+        //发送回复，在好友界面里进行处理数据
+        emit addFriendResponse(obj);
     }
 
+    //被添加好友
+    else if(obj.value("cmd").toString()=="be_addfriend")
+    {
+
+        MsgCombineData info;
+        info.userBaseInfo.ssid=obj["uid"].toInt();
+        info.userBaseInfo.username=obj["username"].toString();
+        ContactPage::getInstance()->addContactInfo("我的好友",info);
+    }
+
+    //如果没有待处理请求 停止计时器
+    {
+        std::lock_guard<std::mutex> lock(m_requestsMutex);
+
+        if(m_pendingRequests.isEmpty())
+        {
+            m_timeoutTimer.stop();
+        }
+    }
 }
 
 void ClientRequestHandler::queryFuzzySearchRequsetHandler(const QString &content, bool isGroup, QueryCallback callback)
@@ -165,6 +173,30 @@ void ClientRequestHandler::queryFuzzySearchRequsetHandler(const QString &content
     }
 }
 
+void ClientRequestHandler::addFriendRequestHandler(const qint32 &ssid, bool isGroup)
+{
+    //生成请求ID
+    QString requestId=generateRequestId();
+
+    //将请求ID插入任务队列中
+    {
+        std::lock_guard<std::mutex> lock(m_requestsMutex);
+        m_pendingRequests.insert(requestId,{});
+    }
+
+    QJsonObject send_data;
+    send_data["cmd"]="addfriend";
+    send_data["uid"]=CommonData::getInstance()->getCurUserInfo().ssid;
+    send_data["friend_uid"]=ssid;
+    send_data["request_id"]=requestId;
+    ClientConServer::getInstance()->clinet_write_data(send_data);
+
+    //启动超时检查
+    if(!m_timeoutTimer.isActive())
+    {
+        m_timeoutTimer.start(5000);
+    }
+}
 ClientRequestHandler::ClientRequestHandler()
 {
     // 设置超时定时器
@@ -172,6 +204,7 @@ ClientRequestHandler::ClientRequestHandler()
     connect(&m_timeoutTimer, &QTimer::timeout, this, &ClientRequestHandler::cleanupTimeoutRequests);
 
     connect(this,&ClientRequestHandler::queryFuzzySearchRequest,&ClientRequestHandler::queryFuzzySearchRequsetHandler);
+
 }
 
 ClientRequestHandler::~ClientRequestHandler()

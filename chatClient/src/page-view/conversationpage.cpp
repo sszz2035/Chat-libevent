@@ -2,34 +2,25 @@
 // Created by FU-QAQ on 2024/12/12.
 //
 #include "conversationpage.h"
-// #include "msg-bubble-model/MsgBubbleModel.h"
 #include"effect-component/msg-bubble/msgbubblemodel.h"
-// #include "msg-bubble-delegate/MsgBubbleDelegate.h"
 #include"effect-component/msg-bubble/msgbubbledelegate.h"
-
-// #include "msg-bubble-view/MsgBubbleView.h"
 #include"effect-component/msg-bubble/msgbubbleview.h"
 
 #include "screenshotpage.h"
 
-// #include "emoji-picker-page/EmojiPickerPage.h"
 #include"emojipickerpage.h"
 
-// #include "group-member-dock/GroupMemberDock.h"
 #include"groupmemberdock.h"
 
-// #include "../user-page/UserPage.h"
-#include"userpage.h"
+#include "userpage.h"
 #include "messagepage.h"
-
+#include "define.h"
 // #include "help.h"
 // #include "uuid/GenUUID.h"  随机id
-// #include "common-data/CommonData.h"
 #include "ElaToolButton.h"
 #include "ElaDockWidget.h"
 #include "ElaPushButton.h"
 #include "ElaMenu.h"
-// #include "Def.h"
 #include "ElaInteractiveCard.h"
 #include "ElaTheme.h"
 #include <qpushbutton.h>
@@ -568,14 +559,14 @@ void ConversationGroupPage::initConnectFunc() {
     });
 }
 
-// ConversationPage::ConversationPage(ConversationType type,const MsgCombineDTO& dto ,QWidget * parent)
-//     : QWidget(parent)
-// {
-//     setWindowFlag(Qt::FramelessWindowHint);
-//     auto * _layout = new QVBoxLayout;
-//     auto * _inputWid = new InputWidget(this);
-//     _layout->setContentsMargins(0,0,5,0);
-//     _layout->setSpacing(0);
+ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& dto ,QWidget * parent)
+    : QWidget(parent)
+{
+    setWindowFlag(Qt::FramelessWindowHint);
+    auto * _layout = new QVBoxLayout;
+    auto * _inputWid = new InputWidget(this);
+    _layout->setContentsMargins(0,0,5,0);
+    _layout->setSpacing(0);
 //     QString _curSSID = g_pCommonData->getCurUserInfo().ssid;
 //     QString _curName = g_pCommonData->getCurUserInfo().username;
 //     if(type == ConversationType::Friend){
@@ -755,7 +746,7 @@ void ConversationGroupPage::initConnectFunc() {
 //     this->setLayout(_layout);
 //     this->setObjectName("ConversationPage");
 //     this->setStyleSheet("#ConversationPage{background-color: rgb(242, 242, 242);border-bottom-left-radius: 30px;border-top-right-radius: 30px;}");
-// }
+}
 
 ConversationPage::~ConversationPage()
 {

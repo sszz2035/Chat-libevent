@@ -6,6 +6,7 @@
 #include <QGraphicsDropShadowEffect>
 #include"core/loginverify.h"
 #include"page-view/archpage.h"
+#include"core/commondata.h"
 #include<QTimer>
 LandPage* LandPage::instance = nullptr;
 
@@ -77,6 +78,15 @@ void LandPage::login_handler(QJsonObject &obj)
         int ssid=obj["uid"].toInt();
         QString friList=obj["friendlist"].toString();
         QString groList=obj["grouplist"].toString();
+        
+        // 存储用户信息到CommonData
+        UserBaseInfoData userInfo;
+        userInfo.ssid = ssid;
+        userInfo.username = obj["username"].toString();
+        userInfo.avatarPath = ":/include/Image/Cirno.jpg"; // 默认头像
+        CommonData::getInstance()->setCurUserInfo(userInfo);
+        
+        // 创建临时的UserInfo用于发送信号
         UserInfo* info=new UserInfo();
         info->_ssid=ssid;
         info->_name=obj["username"].toString();
@@ -84,6 +94,10 @@ void LandPage::login_handler(QJsonObject &obj)
         info->_groList=groList;
         info->_type=Myself;
         emit(sigTriggerUpdate(info));
+        
+        // 更新ArchPage的好友数据
+        ArchPage::getInstance()->convertUserInfoToFriendshipData(userInfo, friList, groList);
+        
         ElaMessageBar::success(ElaMessageBarType::Top,"✅","登录成功！",1000,this);
         QTimer::singleShot(1500, this, [this]() {
             hide();

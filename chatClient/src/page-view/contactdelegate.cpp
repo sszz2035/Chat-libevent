@@ -146,7 +146,7 @@ void ContactDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
 
     // 绘制状态
     QString status = index.data(ContactDelegate::StatusRole).toString();
-    if (status.contains("在线")) {
+    if (status.contains("online")) {
         const QColor onlineColor = (mode_ == ElaThemeType::Dark) ? QColor(25, 180, 100) : QColor(33, 228, 137);
         painter->setBrush(onlineColor);
         painter->setRenderHint(QPainter::Antialiasing);
@@ -156,10 +156,10 @@ void ContactDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
         painter->drawEllipse(circleRect);
     }
 
-    //    QString description = "";
-    //    painter->setPen(Qt::black);
-    //    QRect descriptionRect(myOption.rect.left() + 5, myOption.rect.bottom() - fm.height() - 5, myOption.rect.width() - 10, fm.height());
-    //    painter->drawText(descriptionRect, Qt::AlignRight | Qt::AlignBottom, description);
+    QString description = index.data(Qt::UserRole + 2).toString();
+       painter->setPen(Qt::black);
+       QRect descriptionRect(avatarRect.right() + 10, myOption.rect.bottom() - fm.height() - 15, myOption.rect.width() - 10, fm.height());
+       painter->drawText(descriptionRect, Qt::AlignLeft | Qt::AlignBottom, description);
 }
 
 
@@ -173,66 +173,67 @@ QSize ContactDelegate::sizeHint(const QStyleOptionViewItem &option, const QModel
     return size;
 }
 
-// bool ContactDelegate::editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) {
-//     if (event->type() == QEvent::MouseButtonPress && _menuEnable)
-//     {
-//         QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
-//         if (mouseEvent->button() == Qt::RightButton)
-//         {
-//             // 非分组节点
-//             if (!model->hasChildren(index))
-//             {
-//                 // 群组
-//                 if (_groupFlag) {
-//                     // is user who create group
-//                     QString groupSSID = model->data(index,CustomRoles::SSIDRole).toString();
-//                     QString createSSID = g_pCommonData->getGroupBaseInfoBySSID(groupSSID).createSSID;
-//                     ElaMenu menu;
-//                     if (createSSID == g_pCommonData->getCurUserInfo().ssid) {
-//                         QAction *transferGroupAction = menu.addAction("转让群聊");
-//                         connect(transferGroupAction, &QAction::triggered, [=]() {
-//                             emit sigTransferGroup(model->data(index,CustomRoles::SSIDRole).toString());
-//                         });
-//                     }else {
-//                         QAction *removeFriendAction = menu.addAction("退出群聊");
-//                         connect(removeFriendAction, &QAction::triggered, [=]() {
-//                             emit sigLeaveGroup(model->data(index,CustomRoles::SSIDRole).toString());
-//                         });
-//                     }
-//                     menu.exec(mouseEvent->globalPosition().toPoint());
-//                 }else {
-//                     ElaMenu menu;
-//                     QAction *removeFriendAction = menu.addAction("删除好友");
-//                     QAction *removeGroupingAction = menu.addAction("删除分组");
-//                     connect(removeFriendAction, &QAction::triggered, [=]() {
-//                         emit sigRemoveFriend(model->data(index,CustomRoles::SSIDRole).toString());
-//                     });
-//                     connect(removeGroupingAction, &QAction::triggered, [=]() {
-//                         emit sigRemoveGrouping(model->data(index).toString());
-//                     });
-//                     menu.exec(mouseEvent->globalPosition().toPoint());
-//                 }
-//             }
-//             // 分组管理
-//             else {
-//                 if (!_groupFlag) {
-//                     ElaMenu menu;
-//                     QAction *addGroupingAction = menu.addAction("添加分组");
-//                     QAction *removeGroupingAction = menu.addAction("删除分组");
+bool ContactDelegate::editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) {
+    if (event->type() == QEvent::MouseButtonPress && _menuEnable)
+    {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::RightButton)
+        {
+            // 非分组节点
+            if (!model->hasChildren(index))
+            {
+                // 群组
+                if (_groupFlag) {
+                    // is user who create group
+                    // QString groupSSID = model->data(index,CustomRoles::SSIDRole).toString();
+                    // QString createSSID = g_pCommonData->getGroupBaseInfoBySSID(groupSSID).createSSID;
+                    // ElaMenu menu;
+                    // if (createSSID == g_pCommonData->getCurUserInfo().ssid) {
+                    //     QAction *transferGroupAction = menu.addAction("转让群聊");
+                    //     connect(transferGroupAction, &QAction::triggered, [=]() {
+                    //         emit sigTransferGroup(model->data(index,CustomRoles::SSIDRole).toString());
+                    //     });
+                    // }else {
+                    //     QAction *removeFriendAction = menu.addAction("退出群聊");
+                    //     connect(removeFriendAction, &QAction::triggered, [=]() {
+                    //         emit sigLeaveGroup(model->data(index,CustomRoles::SSIDRole).toString());
+                    //     });
+                    // }
+                    // menu.exec(mouseEvent->globalPosition().toPoint());
+                }else {
+                    ElaMenu menu;
+                    QAction *removeFriendAction = menu.addAction("删除好友");
+                    QAction *removeGroupingAction = menu.addAction("删除分组");
+                    connect(removeFriendAction, &QAction::triggered, [=]() {
+                        emit sigRemoveFriend(model->data(index,CustomRoles::SSIDRole).toString());
+                    });
+                    connect(removeGroupingAction, &QAction::triggered, [=]() {
+                        emit sigRemoveGrouping(model->data(index).toString());
+                    });
+                    menu.exec(mouseEvent->globalPosition().toPoint());
+                }
+            }
+            // 分组管理
+            else {
+                if (!_groupFlag) {
+                    ElaMenu menu;
+                    QAction *addGroupingAction = menu.addAction("添加分组");
+                    QAction *removeGroupingAction = menu.addAction("删除分组");
 
-//                     connect(addGroupingAction, &QAction::triggered, [=]() {
-//                         _inputGroupingNameDialog->show();
-//                         _inputGroupingNameDialog->exec();
-//                     });
-//                     connect(removeGroupingAction, &QAction::triggered, [=]() {
-//                         QString groupingName = model->data(index).toString();
-//                         emit sigRemoveGrouping(model->data(index).toString());
-//                     });
-//                     menu.exec(mouseEvent->globalPosition().toPoint());
-//                 }
-//             }
-//             return true;
-//         }
-//     }
-//     return QStyledItemDelegate::editorEvent(event, model, option, index);
-// }
+                    connect(addGroupingAction, &QAction::triggered, [=]() {
+                        _inputGroupingNameDialog->show();
+                        _inputGroupingNameDialog->exec();
+                    });
+                    connect(removeGroupingAction, &QAction::triggered, [=]() {
+                        QString groupingName = model->data(index).toString();
+                        emit sigRemoveGrouping(model->data(index).toString());
+                    });
+                    menu.exec(mouseEvent->globalPosition().toPoint());
+                }
+            }
+            return true;
+        }
+    }
+    return QStyledItemDelegate::editorEvent(event, model, option, index);
+}
+

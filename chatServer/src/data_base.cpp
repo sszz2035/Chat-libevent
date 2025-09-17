@@ -81,6 +81,51 @@ bool DataBase::exec_query_and_fetch_row(const char* sql, MYSQL_ROW& row)
     return true;
 }
 
+int DataBase::exec_query_and_fetch_rows(const char* sql, std::vector<std::vector<std::string>>& rows)
+{
+    //上读锁
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+
+    if(mysql_query(mysql.get(),sql))
+    {
+        LOG_PERROR("mysql_query");        
+        return -1;
+    }
+    
+    //存储结果
+    MYSQL_RES* res=mysql_store_result(mysql.get());
+    if(res==NULL)
+    {
+        LOG_PERROR("mysql_store_result");      
+        mysql_free_result(res);  
+        return -1;
+    }
+    
+    //获取列数
+    unsigned int num_fields=mysql_num_fields(res);
+    
+    //读取每一行的结果
+    MYSQL_ROW row;
+    int row_count=0;
+    while((row=mysql_fetch_row(res))!=NULL)
+    {
+        std::vector<std::string> current_row;
+        for(unsigned int i=0;i<num_fields;i++)
+        {
+            if(row[i]!=NULL)
+                current_row.push_back(std::string(row[i]));
+            else
+                current_row.push_back("");
+        }
+        rows.push_back(current_row);
+        row_count++;
+    }
+
+    //释放结果
+    mysql_free_result(res);
+    return row_count;
+}
+
 bool DataBase::exec_update(const char* sql)
 {
     //上写锁

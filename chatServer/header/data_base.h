@@ -7,6 +7,7 @@
 #include<jsoncpp/json/json.h>
 #include<memory>
 #include <shared_mutex>
+#include <vector>
 #include "snowflake_id_generator.h"
 
 //为MYSQL* 指针定制的删除器
@@ -151,6 +152,15 @@ public:
      * @return 成功返回true 失败返回false
     */
     bool exec_query_and_fetch_row(const char* sql, MYSQL_ROW& row);
+
+    /**
+     * @brief [辅助函数] 用于执行查询命令，并返回多行查询结果
+     * @param sql 查询语句
+     * @param rows 接收查询结果，每行是一个vector<string>
+     * @note 返回多行结果，处理NULL值
+     * @return 查询到的行数，出错返回-1
+    */
+    int exec_query_and_fetch_rows(const char* sql, std::vector<std::vector<std::string>>& rows);
 
 private:
 

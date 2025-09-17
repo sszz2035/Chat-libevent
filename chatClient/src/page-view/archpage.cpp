@@ -2,6 +2,7 @@
 #include "addpage.h"
 #include "creategrouppage.h"
 #include"utils/log/logfile.h"
+#include"core/commondata.h"
 
 // #include "../CommonFunc.hpp"
 #include "aboutpage.h"
@@ -53,29 +54,12 @@ void ArchPage::destroyInstance() {
     }
 }
 
-void ArchPage::setUserInfo(UserInfo *info)
-{
-    userInfo->_ssid=info->_ssid;
-    userInfo->_name=info->_name;
-    userInfo->_friList=info->_friList;
-    userInfo->_groList=info->_groList;
-    userInfo->_type=info->_type;
-}
 
-UserInfo ArchPage::getUserInfo()
+ void ArchPage::convertUserInfoToFriendshipData(const UserBaseInfoData& userBaseInfo, const QString& friList, const QString& groList)
 {
-    return UserInfo(*userInfo);
-}
-
- void ArchPage::convertUserInfoToFriendshipData(UserInfo *userInfo)
-{
-    if (!userInfo) {
-        SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Error: userInfo is null in convertUserInfoToContactData");
-        return;
-    }
     // 解析好友列表和群组列表
-    QStringList friendList = userInfo->_friList.split('|', Qt::SkipEmptyParts);
-    QStringList groupList = userInfo->_groList.split('|', Qt::SkipEmptyParts);
+    QStringList friendList = friList.split('|', Qt::SkipEmptyParts);
+    QStringList groupList = groList.split('|', Qt::SkipEmptyParts);
     
     // 清空缓存并重置计数器
     cache.clear();
@@ -88,7 +72,7 @@ UserInfo ArchPage::getUserInfo()
         if(friendssid>0)
         {
             FriendshipData friendData;
-            friendData.ssid=userInfo->_ssid;
+            friendData.ssid=userBaseInfo.ssid;
             friendData.friendSSID=friendssid;
             friendData.friendType=1;
             friendData.groupingName="我的好友";//默认分组
@@ -160,11 +144,10 @@ void ArchPage::sltTriggerUpdate(UserInfo* info) {
     // } else {
     //     setUserInfoCardSubTitle(udto.ssid);
     // }
-    setUserInfo(info);
-    setUserInfoCardTitle(userInfo->_name);
-    setUserInfoCardSubTitle(QString::number(userInfo->_ssid));
+    UserBaseInfoData userInfo = CommonData::getInstance()->getCurUserInfo();
+    setUserInfoCardTitle(userInfo.username);
+    setUserInfoCardSubTitle(QString::number(userInfo.ssid));
     setUserInfoCardPixmap(QPixmap(":/include/Image/Cirno.jpg"));
-    convertUserInfoToFriendshipData(userInfo);
 }
 
 void ArchPage::sltShowMaskEffect() {
@@ -188,7 +171,7 @@ void ArchPage::sltHideLoading() {
     sltHideMaskEffect();
 }
 
-ArchPage::ArchPage(QWidget *parent) : ElaWindow(parent),userInfo(new UserInfo()) {
+ArchPage::ArchPage(QWidget *parent) : ElaWindow(parent) {
     initWindow();
 
     initEdgeLayout();
@@ -217,8 +200,6 @@ ArchPage::~ArchPage() {
     _addPage = nullptr;
     delete _createGroupPage;
     _createGroupPage = nullptr;
-    delete userInfo;
-    userInfo=nullptr;
 }
 
 void ArchPage::initWindow() {

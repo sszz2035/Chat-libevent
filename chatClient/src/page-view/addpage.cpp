@@ -8,7 +8,8 @@
 #include<QJsonArray>
 #include "effect-component/ssmaskwidget.h"
 #include "effect-component/loadingdialog.h"
-
+#include "page-view/contactpage.h"
+#include"utils/log/logfile.h"
 #include <QPainter>
 
 AddPage::AddPage() {
@@ -21,14 +22,11 @@ AddPage::AddPage() {
 
     initConnectFunc();
 
-    UserBaseInfoData data;
-    data.username="张棋";
-    data.avatarPath="";
-    data.ssid=2035797167;
-    sltAddUserRes(data);
+
 }
 
 AddPage::~AddPage() {
+
 }
 
 void AddPage::sltShowMaskEffect() {
@@ -56,7 +54,6 @@ void AddPage::sltAddUserRes(const UserBaseInfoData &data) {
     ElaInteractiveCard * card = new ElaInteractiveCard(this);
     ElaToolButton * addBtn = new ElaToolButton(card);
 
-    //1
     QString avatar = (data.avatarPath=="-1"||data.avatarPath.isEmpty())?":/include/Image/Cirno.jpg":data.avatarPath;
     card->setCardPixmap(avatar);
     card->setTitle(data.username) ;//+ " (" + data.ssid + ")")
@@ -75,9 +72,8 @@ void AddPage::sltAddUserRes(const UserBaseInfoData &data) {
     _userResMap.insert(QString::number(data.ssid),card);
 
     // 绑定按钮消息
-    connect(addBtn,&ElaToolButton::clicked,[=]() {
-    //3
-        // emit sigAddBtnClicked(data.ssid,false);
+    connect(addBtn,&ElaToolButton::clicked,[=](){
+        emit sigAddBtnClicked(data.ssid,false);
     });
 }
 
@@ -238,6 +234,31 @@ void AddPage::initConnectFunc() {
         // emit g_pCommonData->sigFuzzySearchRequest(content,_typeSwitch->getCurrentIndex()!=0);
     });
 
+    //添加好友请求
+    connect(this,&AddPage::sigAddBtnClicked,ClientRequestHandler::getInstance(),&ClientRequestHandler::addFriendRequestHandler);
+
+    //添加好友回复
+    connect(ClientRequestHandler::getInstance(),&ClientRequestHandler::addFriendResponse,this,[this](const QJsonObject& obj){
+        if(obj["result"]=="invalid_request"||obj["result"]=="not_exist")
+        {
+            SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "invalid_request: "+obj["request_id"].toString());
+            return;
+        }
+        else if(obj["result"]=="already_friend")
+        {
+            ElaMessageBar::error(ElaMessageBarType::Top,"⚠","已是好友，添加失败！",1000,this);
+            return;
+        }
+        //添加成功 还有被添加的处理！
+        else if(obj["result"]=="success")
+        {
+            MsgCombineData data;
+            data.userBaseInfo.ssid=obj["friend_uid"].toInt();
+            data.userBaseInfo.username=obj["friend_username"].toString();
+            ContactPage::getInstance()->addContactInfo("我的好友",data);
+            ElaMessageBar::success(ElaMessageBarType::Top,"✅","添加成功！",1000,this);
+        }
+    });
     //8
     // connect(g_pCommonData,&CommonData::sigFuzzySearchFriendResponse,this,[=](QList<UserBaseInfoDTO> dto,int waitCount) {
     //     sltHideLoading();
@@ -278,6 +299,7 @@ void AddPage::initConnectFunc() {
     // });
 
     // connect(this,&AddPage::sigAddBtnClicked,g_pCommonData,&CommonData::sigAddFriendOrGroup);
+
 }
 
 void AddPage::paintEvent(QPaintEvent *event) {

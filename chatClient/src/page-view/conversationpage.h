@@ -5,8 +5,8 @@
 #include <QWidget.h>
 #include <QTextEdit>
 // #include "common-data/common-dto/CommonDatabaseDTO.h"
-// #include "define.h"
-
+#include "define.h"
+#include"core/pagedata.h"
 class ElaToolButton;
 class ElaDockWidget;
 class ElaMenu;
@@ -176,7 +176,7 @@ enum ConversationType{
 
 class ConversationPage : public QWidget{
 public:
-    // explicit ConversationPage(ConversationType type,const MsgCombineDTO& dto ,QWidget * parent);
+    explicit ConversationPage(ConversationType type,const MsgCombineData& dto ,QWidget * parent);
     ~ConversationPage();
 
     void scrollMsgViewToBottom();

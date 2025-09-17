@@ -35,9 +35,9 @@ public:
 
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 
-    // bool editorEvent(QEvent *event, QAbstractItemModel *model,
-    //                  const QStyleOptionViewItem &option,
-    //                  const QModelIndex &index) override;
+    bool editorEvent(QEvent *event, QAbstractItemModel *model,
+                     const QStyleOptionViewItem &option,
+                     const QModelIndex &index) override;
 
     enum CustomRoles {
         StatusRole = Qt::UserRole + 1,

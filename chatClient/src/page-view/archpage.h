@@ -44,9 +44,7 @@ public:
     static ArchPage * getInstance();
     static void destroyInstance();
     void setInstanceParent(QObject * parent);
-    void setUserInfo(UserInfo *info);
-    UserInfo getUserInfo();
-    void convertUserInfoToFriendshipData(UserInfo *userInfo);
+    void convertUserInfoToFriendshipData(const UserBaseInfoData& userBaseInfo, const QString& friList, const QString& groList);
 public slots:
     void sltTriggerUpdate(UserInfo* info);
 
@@ -95,7 +93,6 @@ private:
     SSMaskWidget  *_maskWidget;
     LoadingDialog *_loadingDialog;
 private:
-    UserInfo* userInfo;
     QList<FriendshipData> cache;//用来转换数据的缓存
     int pendingCallbacks = 0;
 };
