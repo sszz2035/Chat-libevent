@@ -81,6 +81,18 @@ bool DataBase::exec_query_and_fetch_row(const char* sql, MYSQL_ROW& row)
     return true;
 }
 
+bool DataBase::exec_update(const char* sql)
+{
+    //上写锁
+    std::unique_lock<std::shared_mutex>lock(mutex_);
+    if(mysql_query(mysql.get(),sql))
+    {
+        LOG_PERROR("mysql_query");        
+        return false;
+    }
+    return true;
+}
+
 int DataBase::exec_query_and_fetch_rows(const char* sql, std::vector<std::vector<std::string>>& rows)
 {
     //上读锁
@@ -124,18 +136,6 @@ int DataBase::exec_query_and_fetch_rows(const char* sql, std::vector<std::vector
     //释放结果
     mysql_free_result(res);
     return row_count;
-}
-
-bool DataBase::exec_update(const char* sql)
-{
-    //上写锁
-    std::unique_lock<std::shared_mutex>lock(mutex_);
-    if(mysql_query(mysql.get(),sql))
-    {
-        LOG_PERROR("mysql_query");        
-        return false;
-    }
-    return true;
 }
 
 int DataBase::database_get_group_info(std::string* g)

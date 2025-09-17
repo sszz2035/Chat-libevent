@@ -83,12 +83,13 @@ private:
      * @return 成功读取返回true 否则返回false
      * @note 在thread_readcb中被调用
     */
-    bool thread_read_data(struct bufferevent* bev,char *s);
+    bool thread_read_data(struct bufferevent* bev,char *s,size_t buffer_size);
 
     /**
      * @brief 根据"|"来解析字符串，并将解析的结果放入s中
      * @param f 待解析的字符串
      * @param s 字符串数组，存放解析结果
+     * @param buffer_size 缓冲区大小
      * @return 返回解析出的字符串个数
     */
     int thread_parse_string(std::string &f,std::string *s);
@@ -157,12 +158,18 @@ private:
     void thread_client_offline(struct bufferevent* bev,const Json::Value& v);
 
     /**
-     * @brief 处理客户端查询用户信息事件
+     * @brief 处理客户端通过uid查询用户信息事件
      * @param bev 发出请求的客户端事件
      * @param v 要查询的用户信息
     */
     void thread_query_user_by_uid(struct bufferevent* bev,const Json::Value& v);
 
+    /**
+     * @brief 处理客户端添加好友时模糊查询事件
+     * @param bev 发出请求的客户端事件
+     * @param v 要查询的用户信息
+    */
+    void thread_query_fuzzy_search(struct bufferevent* bev,const Json::Value& v);
     // 事件集合
     std::unique_ptr<struct event_base,EventBaseDeleter>base;
     // 线程

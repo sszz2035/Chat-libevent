@@ -1,4 +1,5 @@
 #include "chat_thread.h"
+#include<sstream>
 #include "log.h"
 ChatThread::ChatThread() : base(event_base_new()),
                            _thread(std::make_unique<std::thread>(worker, this)),
@@ -148,6 +149,11 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
         {
             t->thread_query_user_by_uid(bev,val);
         }
+        // 处理模糊查询事件
+        else if(val["cmd"]=="fuzzy_search")
+        {
+            t->thread_query_fuzzy_search(bev,val);
+        }
     }
 }
 
@@ -175,18 +181,17 @@ bool ChatThread::thread_read_data(struct bufferevent *bev, char *s, size_t buffe
         LOG_PERROR("bufferevent_read length");
         return false;
     }
-    
     // 检查数据长度是否合理
     if (sz <= 0 || sz > 10240) // 限制最大10KB
     {
-        LOG_ERROR("Invalid data size: %d", sz);
+        LOG_ERROR("Invalid data size");
         return false;
     }
     
     // 检查目标缓冲区是否有足够空间
     if (sz >= buffer_size)
     {
-        LOG_ERROR("Buffer too small for data size: %d", sz);
+        LOG_ERROR("Buffer too small for data size");
         return false;
     }
     
@@ -428,6 +433,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
     if (!v.isMember("friend_uid") || !v["friend_uid"].isUInt64())
     {
         val["cmd"] = "addfriend_reply";
+        val["request_id"]=v["request_id"];
         val["result"] = "invalid_request";
         thread_write_data(bev, val);
         db->database_disconnect();
@@ -441,6 +447,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
     if (!db->database_user_is_exist_by_uid(friend_uid))
     {
         val["cmd"] = "addfriend_reply";
+        val["request_id"]=v["request_id"];
         val["result"] = "not_exist";
         thread_write_data(bev, val);
         db->database_disconnect();
@@ -464,6 +471,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
                 if (std::stoull(Friend[i]) == friend_uid)
                 {
                     val["cmd"] = "addfriend_reply";
+                    val["request_id"]=v["request_id"];
                     val["result"] = "already_friend";
                     thread_write_data(bev, val);
                     db->database_disconnect();
@@ -495,6 +503,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
     val["result"] = "success";
     val["friend_uid"] = Json::Value::UInt64(friend_uid);
     val["friend_username"] = friend_name;
+    val["request_id"]=v["request_id"];
     thread_write_data(bev, val);
 
     db->database_disconnect();
@@ -731,5 +740,53 @@ void ChatThread::thread_query_user_by_uid(struct bufferevent* bev,const Json::Va
     else    val["status"]="offline";
     val["request_id"]=v["request_id"];
     thread_write_data(bev,val);
+    db->database_disconnect();
+}
+
+void ChatThread::thread_query_fuzzy_search(struct bufferevent* bev,const Json::Value& v)
+{
+    Json::Value responce;
+    Json::Value val;//json数组 存储数据
+    std::string content=v["content"].asString();
+    responce["cmd"]="search_reply";
+    responce["request_id"]=v["request_id"];
+    db->database_connect();
+    char sql[256]={0};
+    bool isGroup=(v["type"]=="group");
+    std::stringstream query;
+    query<<"\'\%"<<content<<"\%\'";
+
+    //1.0版本 后期考虑用分页查询、索引优化、 可以加入功能：中间隔字仍旧匹配
+    if(!isGroup)
+    {
+        responce["type"]="friend";
+        sprintf(sql,"SELECT uid,username FROM chat_user\
+        WHERE uid LIKE %s OR username LIKE %s;",query.str().c_str(),query.str().c_str());
+    }
+    else
+    {
+        responce["type"]="group";
+    }
+    std::vector<std::vector<std::string>> rows;
+    int sz=db->exec_query_and_fetch_rows(sql,rows);
+
+    if(sz==0)
+    {
+        responce["data"]="null";
+        thread_write_data(bev,responce);
+        db->database_disconnect();
+        return ;
+    }
+
+    //对查找到的数据进行处理
+    for(int i=0;i<sz;i++)
+    {
+        Json::Value row_data;
+        row_data["uid"]=rows[i][0];
+        row_data["username"]=rows[i][1];
+        val.append(row_data);
+    }
+    responce["data"]=val;
+    thread_write_data(bev,responce);
     db->database_disconnect();
 }
