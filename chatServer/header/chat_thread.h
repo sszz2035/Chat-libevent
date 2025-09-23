@@ -8,6 +8,9 @@
 #include <memory>
 #include <jsoncpp/json/json.h>
 #include "event_utils.h"
+
+#define MAX_PACKET_SIZE 1024*1024 //数据包最大大小：10MB
+
 class ChatThread
 {
 public:

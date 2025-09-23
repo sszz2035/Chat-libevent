@@ -68,32 +68,44 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
     
     // 循环处理缓冲区中的所有数据包
     while (true)
-    {
-        char buf[8192]; // 增大缓冲区以处理更大的数据包
-        memset(buf, 0, sizeof(buf));
-        
+    {   
         // 检查是否有足够的数据读取长度字段
         struct evbuffer *input = bufferevent_get_input(bev);
         size_t available = evbuffer_get_length(input);
-        if (available < 4)
+        int packet_size=0;//数据包大小
+        evbuffer_copyout(input, &packet_size, 4);
+
+        //解决数据包过大时分包问题
+        if (available < 4+packet_size)
         {
             break; // 没有足够的数据读取长度，等待下次回调
         }
-        
+        std::cout<<"packet_size:"<<packet_size<<std::endl;
+
+        if(packet_size<=0||packet_size>MAX_PACKET_SIZE)
+        {
+            LOG_ERROR("packet_size error");
+            return;
+        }
+
+        //动态缓冲区
+        std::vector<char>buf(packet_size+1);
+        memset(buf.data(),0,buf.size());
+
         // 尝试读取一个完整的数据包
-        if (!t->thread_read_data(bev, buf, sizeof(buf)))
+        if (!t->thread_read_data(bev, buf.data(), buf.size()))
         {
             LOG_PERROR("thread_read_data");
             return;
         }
         
-        std::cout << "--thread " << t->thread_get_id() << " receive data " << buf << std::endl;
+        std::cout << "--thread " << t->thread_get_id() << " receive data " << buf.data() << std::endl;
 
         // 解析json数据
         Json::Reader reader; // json 解析对象
         Json::Value val;     // json存储的容器 类似于map
 
-        if (!reader.parse(buf, val))
+        if (!reader.parse(buf.data(), val))
         {
             LOG_PERROR("parse");
             return;
@@ -175,20 +187,20 @@ bool ChatThread::thread_read_data(struct bufferevent *bev, char *s, size_t buffe
 {
     // 要读取的长度
     int sz = 0;
-    // 先读取长度，放入sz中
+    // // 先读取长度，放入sz中
     if (bufferevent_read(bev, &sz, 4) != 4)
     {
         LOG_PERROR("bufferevent_read length");
         return false;
     }
-    // 检查数据长度是否合理
-    if (sz <= 0 || sz > 10240) // 限制最大10KB
+    // // 检查数据长度是否合理
+    if (sz <= 0 || sz > MAX_PACKET_SIZE) // 限制最大10KB
     {
         LOG_ERROR("Invalid data size");
         return false;
     }
     
-    // 检查目标缓冲区是否有足够空间
+    // // 检查目标缓冲区是否有足够空间
     if (sz >= buffer_size)
     {
         LOG_ERROR("Buffer too small for data size");
@@ -196,7 +208,8 @@ bool ChatThread::thread_read_data(struct bufferevent *bev, char *s, size_t buffe
     }
     
     size_t count = 0;
-    char buf[1024] = {0};
+    //临时缓冲区
+    char buf[4096] = {0};
     
     while (count < sz)
     {
@@ -291,11 +304,12 @@ void ChatThread::thread_write_data(struct bufferevent *bev, const Json::Value &v
     Json::FastWriter writer;
     std::string val = writer.write(v);
     int len = val.size();
-    char wbuf[1024] = {0};
-    memcpy(wbuf, &len, 4);
-    memcpy(wbuf + 4, val.c_str(), len);
+    size_t total_size=4+len;
+    std::vector<char>wbuf(total_size);
+    memcpy(&wbuf[0], &len, 4);
+    memcpy(&wbuf[0] + 4, val.c_str(), len);
     // 将数据写入输出缓冲区中
-    bufferevent_write(bev, wbuf, len + 4);
+    bufferevent_write(bev, &wbuf[0], len + 4);
 }
 
 void ChatThread::thread_login(struct bufferevent *bev, Json::Value &v)
@@ -511,10 +525,11 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
 
 void ChatThread::thread_private_chat(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string username = v["username"].asString();
-    std::string friendname = v["tofriend"].asString();
-    struct bufferevent *b = info->list_friend_online(friendname);
+    uint64_t userUid = v["uid"].asUInt64();
+    uint64_t friendUid = v["tofriend"].asUInt64();
+    struct bufferevent *b = info->list_friend_online(std::to_string(friendUid));
     Json::Value val;
+    if(v.isMember("request_id"))    val["request_id"]=v["request_id"];
     // 如果好友不在线
     if (b == NULL)
     {
@@ -525,7 +540,7 @@ void ChatThread::thread_private_chat(struct bufferevent *bev, const Json::Value 
     }
     // 好友在线
     val["cmd"] = "private";
-    val["fromfriend"] = username;
+    val["fromfriend"] =Json::Value::UInt64(userUid);
     val["text"] = v["text"];
     thread_write_data(b, val);
 }
