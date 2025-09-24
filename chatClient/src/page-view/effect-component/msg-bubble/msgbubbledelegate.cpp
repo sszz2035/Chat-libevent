@@ -136,9 +136,9 @@ QSize MsgBubbleDelegate::sizeHint(const QStyleOptionViewItem &option, const QMod
     // 内容高度 + 上下内边距 + 气泡边距(20)
     int totalHeight = 0;
     if (isGroupMode)
-        totalHeight = contentSize.height() + padding * 3 + 20;
+        totalHeight = contentSize.height() + padding * 3 + 0;
     else
-        totalHeight = contentSize.height() + padding * 3 + 20 + namePadding;
+        totalHeight = contentSize.height() + padding * 3 + 0 + namePadding;
 
     return QSize(option.rect.width(), std::max(totalHeight + padding * 2, avatarSize + padding * 4));
 }

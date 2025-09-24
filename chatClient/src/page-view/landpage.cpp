@@ -23,7 +23,6 @@ LandPage::LandPage(QWidget *parent)
     // Set frameless window
     setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
     setAttribute(Qt::WA_TranslucentBackground);
-    connect(this,&LandPage::sigTriggerUpdate,ArchPage::getInstance(),&ArchPage::sltTriggerUpdate);
 }
 
 LandPage* LandPage::getInstance()
@@ -86,6 +85,9 @@ void LandPage::login_handler(QJsonObject &obj)
         userInfo.avatarPath = ":/include/Image/Cirno.jpg"; // 默认头像
         CommonData::getInstance()->setCurUserInfo(userInfo);
         
+        //绑定更新信号
+        connect(this,&LandPage::sigTriggerUpdate,ArchPage::getInstance(),&ArchPage::sltTriggerUpdate);
+
         // 创建临时的UserInfo用于发送信号
         UserInfo* info=new UserInfo();
         info->_ssid=ssid;
@@ -93,6 +95,7 @@ void LandPage::login_handler(QJsonObject &obj)
         info->_friList=friList;
         info->_groList=groList;
         info->_type=Myself;
+
         emit(sigTriggerUpdate(info));
         
         // 更新ArchPage的好友数据

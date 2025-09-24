@@ -19,6 +19,7 @@
 #include <QHash>
 #include <QPointer>
 #include <mutex>
+#include"utils/get-time/GetCurTime.h"
 
 MessagePage * MessagePage::_messagePage = nullptr;
 static std::mutex m;
@@ -157,62 +158,63 @@ void MessagePage::destroyMessagePage() {
 //     }
 // }
 
-// void MessagePage::addMsgCard(const MsgCombineDTO &info) {
-//     if (info.groupBaseInfo.ssidGroup.isEmpty() && info.userBaseInfo.ssid.isEmpty())return;
-//     if (info.isGroup && info.groupBaseInfo.ssidGroup == "-1") return;
-//     if (!info.isGroup && info.userBaseInfo.ssid == "-1") return;
-//     QFont font;
-//     font.setPixelSize(8);
+void MessagePage::addMsgCard(const MsgCombineData &info) {
+    if (info.groupBaseInfo.ssidGroup==0 && info.userBaseInfo.ssid==0)return;
+    if (info.isGroup && info.groupBaseInfo.ssidGroup == 0) return;
+    if (!info.isGroup && info.userBaseInfo.ssid == 0) return;
+    QFont font;
+    font.setPixelSize(8);
 
-//     QString avatarPath;
-//     if (info.userBaseInfo.avatarPath.isEmpty() || info.userBaseInfo.avatarPath == "-1") {
-//         avatarPath = ":/message-page/rc-page/img/SS-default-icon.jpg";
-//     }else {
-//         avatarPath = info.userBaseInfo.avatarPath;
-//     }
+    QString avatarPath;
+    if (info.userBaseInfo.avatarPath.isEmpty() || info.userBaseInfo.avatarPath == "-1") {
+        avatarPath = ":/include/Image/Cirno.jpg";
+    }else {
+        avatarPath = info.userBaseInfo.avatarPath;
+    }
 
-//     if (!info.isGroup) { // not group
-//         if (!_ssidLinkCardHash.contains(info.userBaseInfo.ssid)) { // 没有添加
-//             ElaInteractiveCard * user = new ElaInteractiveCard(this);
-//             user->setTitle(info.userBaseInfo.username);
-//             user->setSubTitle(info.content);
-//             user->setCardPixmap(QPixmap(avatarPath));
-//             user->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-//             user->setFixedWidth(245);
-//             user->setFixedHeight(60);
-//             user->setCardPixmapSize(50,50);
+    if (!info.isGroup) { // not group
+        if (!_ssidLinkCardHash.contains(info.userBaseInfo.ssid)) { // 没有添加
+            ElaInteractiveCard * user = new ElaInteractiveCard(this);
+            user->setTitle(info.userBaseInfo.username);
+            user->setSubTitle(info.content);
+            user->setCardPixmap(QPixmap(avatarPath));
+            user->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+            user->setFixedWidth(245);
+            user->setFixedHeight(60);
+            user->setCardPixmapSize(50,50);
 
-//             _tempMsgWidLayout->insertWidget(_tempMsgWidLayout->count()-1,user);
-//             _tmpUserMsgList[user] = info;
-//             _ssidLinkCardHash[info.userBaseInfo.ssid] = user;
+            _tempMsgWidLayout->insertWidget(_tempMsgWidLayout->count()-1,user);
+            _tmpUserMsgList[user] = info;
+            _ssidLinkCardHash[info.userBaseInfo.ssid] = user;
 
-//             auto cP = new ConversationPage(Friend, info, _conversionWid);
-//             cP->hide();
-//             _cardLinkPageHash[user] = cP;
+            auto cP = new ConversationPage(Friend, info, _conversionWid);
+            cP->hide();
+            _cardLinkPageHash[user] = cP;
 
-//             connect(user,&ElaInteractiveCard::clicked,this,[=]() {
-//                 _unreadMsgCount[info.userBaseInfo.ssid] = 0;
-//                 user->changeStatus(true);
-//                 user->show();
-//                 cP->scrollMsgViewToBottom();
+            connect(user,&ElaInteractiveCard::clicked,this,[=]() {
+                _unreadMsgCount[info.userBaseInfo.ssid] = 0;
+                user->changeStatus(true);
+                user->show();
+                cP->scrollMsgViewToBottom();
 
-//                 if (_tabSSIDLinkIndex.contains(info.userBaseInfo.ssid)) {
-//                     _conversionWid->setCurrentIndex(_tabSSIDLinkIndex.value(info.userBaseInfo.ssid));
-//                 }else {
-//                     int idx = _conversionWid->addTab(_cardLinkPageHash[user],QPixmap(avatarPath),info.userBaseInfo.username);
-//                     _tabSSIDLinkIndex.insert(info.userBaseInfo.ssid,idx);
-//                     _conversionWid->setCurrentIndex(idx);
-//                 }
-//             });
-//         }
-//         if (info.timestamp > 0) { // new msg come in
-//             int unreadCount = ++_unreadMsgCount[info.userBaseInfo.ssid];
-//             _ssidLinkCardHash[info.userBaseInfo.ssid]->setStatusContent((unreadCount>99?"99+":QString::number(unreadCount)),font,40);
-//             _ssidLinkCardHash[info.userBaseInfo.ssid]->setSubTitle(info.content);
-//             _ssidLinkCardHash[info.userBaseInfo.ssid]->setTimeContent(QString::fromStdString(
-//                                                                           GetCurTime::getTimeObj()->getMsgTypeTime(static_cast<std::time_t>(info.timestamp))),Qt::gray,font);
-//         }
-//     }else {
+                if (_tabSSIDLinkIndex.contains(info.userBaseInfo.ssid)) {
+                    _conversionWid->setCurrentIndex(_tabSSIDLinkIndex.value(info.userBaseInfo.ssid));
+                }else {
+                    int idx = _conversionWid->addTab(_cardLinkPageHash[user],QPixmap(avatarPath),info.userBaseInfo.username);
+                    _tabSSIDLinkIndex.insert(info.userBaseInfo.ssid,idx);
+                    _conversionWid->setCurrentIndex(idx);
+                }
+            });
+        }
+        if (info.timestamp > 0) { // new msg come in
+            int unreadCount = ++_unreadMsgCount[info.userBaseInfo.ssid];
+            _ssidLinkCardHash[info.userBaseInfo.ssid]->setStatusContent((unreadCount>99?"99+":QString::number(unreadCount)),font,40);
+            _ssidLinkCardHash[info.userBaseInfo.ssid]->setSubTitle(info.content);
+            _ssidLinkCardHash[info.userBaseInfo.ssid]->setTimeContent(QString::fromStdString(
+                                                                          GetCurTime::getTimeObj()->getMsgTypeTime(static_cast<std::time_t>(info.timestamp))),Qt::gray,font);
+        }
+    }
+        // else {
 //         if (!_ssidLinkCardHash.contains(info.groupBaseInfo.ssidGroup)) { // 没有添加
 //             ElaInteractiveCard * user = new ElaInteractiveCard(this);
 //             user->setTitle(info.groupBaseInfo.groupName);
@@ -254,7 +256,7 @@ void MessagePage::destroyMessagePage() {
 //                                                                             );
 //         }
 //     }
-// }
+}
 
 
 MessagePage::MessagePage(QWidget *parent) : QWidget(parent) {
@@ -265,6 +267,12 @@ MessagePage::MessagePage(QWidget *parent) : QWidget(parent) {
     initContent();
 
     // initConnectFunc();
+    MsgCombineData data;
+    data.userBaseInfo.username="所说咋咋2035";
+    data.userBaseInfo.ssid=2035797167;
+    data.content="我爱你";
+    data.timestamp=1;
+    addMsgCard(data);
 }
 MessagePage::~MessagePage() {
 

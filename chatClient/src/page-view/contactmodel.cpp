@@ -50,6 +50,7 @@ void ContactModel::addGroupingItem(const QString &groupingName, GroupingItem ite
     addGrouping(groupingName);
 
     if (QStandardItem *parent = _groupingHash.value(groupingName)) {
+        //构造函数会把初始化部分作为Qt::DisplayRole
         QStandardItem *child = new QStandardItem(item.name);
         child->setData(QIcon(item.picPath), Qt::DecorationRole);
         child->setData(item.status, Qt::UserRole + 1);  // StatusRole

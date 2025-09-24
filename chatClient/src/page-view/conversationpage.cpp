@@ -24,7 +24,7 @@
 #include "ElaInteractiveCard.h"
 #include "ElaTheme.h"
 #include <qpushbutton.h>
-
+#include"utils/get-time/GetCurTime.h"
 #ifdef WIN32
 #include <windows.h>
 #include <shellapi.h>
@@ -277,7 +277,7 @@ void InputWidget::initConnectFunc() {
         emit _sendButton->click();
     });
 }
-ConversationFriendPage::ConversationFriendPage(const QString& userInfo,QWidget *parent)
+ConversationFriendPage::ConversationFriendPage(const UserBaseInfoData& userInfo,QWidget *parent)
     : QWidget(parent)
 {
     _userInfo = userInfo;
@@ -289,6 +289,7 @@ ConversationFriendPage::ConversationFriendPage(const QString& userInfo,QWidget *
     initContent();
 
     initConnectFunc();
+
 }
 
 
@@ -352,11 +353,10 @@ void ConversationFriendPage::initEdgeLayout() {
 
     this->setLayout(mainLayout);
     this->setContentsMargins(0,0,0,0);
-
 }
 void ConversationFriendPage::initContent() {
     // tool button settings
-    // _userNameButton->setText(_userInfo.username);
+    _userNameButton->setText(_userInfo.username);
     _userNameButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
     _videoButton->setElaIcon(ElaIconType::CircleVideo);
     _videoButton->setIconSize(QSize(32,32));
@@ -367,7 +367,6 @@ void ConversationFriendPage::initContent() {
     _moreOptionButton->setElaIcon(ElaIconType::CircleEllipsis);
     _moreOptionButton->setIconSize(QSize(32,32));
     _moreOptionButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-
     // view setting
     _msgListView->setObjectName("_msgListView");
     _msgListView->setLayoutMode(QListView::Batched);
@@ -567,69 +566,70 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
     auto * _inputWid = new InputWidget(this);
     _layout->setContentsMargins(0,0,5,0);
     _layout->setSpacing(0);
-//     QString _curSSID = g_pCommonData->getCurUserInfo().ssid;
-//     QString _curName = g_pCommonData->getCurUserInfo().username;
-//     if(type == ConversationType::Friend){
-//         _cfP = new ConversationFriendPage(
-//             dto.userBaseInfo,this
-//             );
-//         _layout->addWidget(_cfP);
-//         _layout->addWidget(_inputWid);
+    qint32 _curSSID = CommonData::getInstance()->getCurUserInfo().ssid;
+    QString _curName = CommonData::getInstance()->getCurUserInfo().username;
+    qDebug()<<_curSSID<<_curName;
+    if(type == ConversationType::Friend){
+        _cfP = new ConversationFriendPage(
+            dto.userBaseInfo,this
+            );
+        _layout->addWidget(_cfP);
+        _layout->addWidget(_inputWid);
 
-//         // send msg by myself
-//         connect(_inputWid, &InputWidget::sigSendBtnClicked, this, [=](const QString& html) {
-//             QString html_cp = html;
-//             // add msg pic to the tmp
-//             QMap<QString,QImage>& cacheImage = _inputWid->_inputEditFrame->getImageTmpMap();
-//             QList<QString> fileIDs;
-//             if (!_inputWid->_inputEditFrame->getImageTmpMap().isEmpty()) {
-//                 for (auto imageIt = cacheImage.begin(); imageIt != cacheImage.end(); imageIt++) {
-//                     std::string imageName = imageIt.key().toStdString();
-//                     g_pCommonData->addMsgPicToTmp(imageIt.value(),imageName);// store in the tmp dir
-//                     html_cp.replace(imageIt.key(),QString::fromStdString(g_pCommonData->getDataPath(msgPic) + "/" + imageName + g_pCommonData->getImageEx()));
-//                     fileIDs.append(imageIt.key());
-//                 }
-//                 cacheImage.clear();
-//             }
-//             _inputWid->_inputEditFrame->clear();
+        // send msg by myself
+        connect(_inputWid, &InputWidget::sigSendBtnClicked, this, [=](const QString& html) {
+            QString html_cp = html;
+         // add msg pic to the tmp
+            QMap<QString,QImage>& cacheImage = _inputWid->_inputEditFrame->getImageTmpMap();
+            QList<QString> fileIDs;
+            // if (!_inputWid->_inputEditFrame->getImageTmpMap().isEmpty()) {
+            //     for (auto imageIt = cacheImage.begin(); imageIt != cacheImage.end(); imageIt++) {
+            //         std::string imageName = imageIt.key().toStdString();
+            //         g_pCommonData->addMsgPicToTmp(imageIt.value(),imageName);// store in the tmp dir
+            //         html_cp.replace(imageIt.key(),QString::fromStdString(g_pCommonData->getDataPath(msgPic) + "/" + imageName + g_pCommonData->getImageEx()));
+            //         fileIDs.append(imageIt.key());
+            //     }
+            //     cacheImage.clear();
+            // }
+            _inputWid->_inputEditFrame->clear();
 
-//             _cfP->insertMsgBubble({_curSSID,_curName,
-//                                    html_cp,g_pCommonData->getCurUserInfo().avatarPath,true});
+            _cfP->insertMsgBubble({QString::number(_curSSID),_curName,
+                                   html_cp,CommonData::getInstance()->getCurUserInfo().avatarPath,true});
 
-//             // store msg
-//             qint64 curTimeStamp = GetCurTime::getTimeObj()->getCurTimeStamp();
-//             MessageContentDTO msgDto{
-//                 _curSSID,
-//                 ContentType::Text,
-//                 html_cp,
-//                 fileIDs,
-//                 {
-//                     1,
-//                     dto.userBaseInfo.ssid
-//                 },
-//                 curTimeStamp
-//             };
+            // store msg
+            qint64 curTimeStamp = GetCurTime::getTimeObj()->getCurTimeStamp();
+            MessageContentData msgDto{
+                _curSSID,
+                ContentType::Text,
+                html_cp,
+                fileIDs,
+                {
+                    1,
+                    dto.userBaseInfo.ssid
+                },
+                curTimeStamp
+            };
 
-//             // get grandfather to link card and set content display
-//             MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
+            // get grandfather to link card and set content display
+            MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
 
 //             // replace image url to [图片] placeholders
-//             QRegularExpression imgRegex("<img[^>]*>", QRegularExpression::CaseInsensitiveOption);
-//             html_cp.replace(imgRegex,"[图片]");
-//             QFont font;
-//             QTextDocument docu;
-//             docu.setHtml(html_cp);
-//             font.setPointSize(9);
+            // QRegularExpression imgRegex("<img[^>]*>", QRegularExpression::CaseInsensitiveOption);
+            // html_cp.replace(imgRegex,"[图片]");
+            QFont font;
+            QTextDocument docu;
+            docu.setHtml(html_cp);
+            font.setPointSize(9);
 
-//             msgPage->_ssidLinkCardHash[dto.userBaseInfo.ssid]->setTimeContent(QString::fromStdString(
-//                                                                                   GetCurTime::getTimeObj()->getMsgTypeTime(curTimeStamp)),
-//                                                                               Qt::gray,font);
-//             msgPage->_ssidLinkCardHash[dto.userBaseInfo.ssid]->setSubTitle(docu.toPlainText());
+            msgPage->_ssidLinkCardHash[dto.userBaseInfo.ssid]->setTimeContent(QString::fromStdString(
+                                                                                  GetCurTime::getTimeObj()->getMsgTypeTime(curTimeStamp)),
+                                                                              Qt::gray,font);
+            msgPage->_ssidLinkCardHash[dto.userBaseInfo.ssid]->setSubTitle(docu.toPlainText());
 
-//             // sync with server
-//             g_pCommonData->setMessageContentData({msgDto});
-//         });
-//     }
+            // sync with server
+            CommonData::getInstance()->setMessageContentData({msgDto});
+        });
+    }
 //     else if(type == ConversationType::Group){
 //         _cgP = new ConversationGroupPage(
 //             dto.groupBaseInfo,
@@ -743,9 +743,9 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
 //             g_pCommonData->setMessageContentData({msgDto});
 //         });
 //     }
-//     this->setLayout(_layout);
-//     this->setObjectName("ConversationPage");
-//     this->setStyleSheet("#ConversationPage{background-color: rgb(242, 242, 242);border-bottom-left-radius: 30px;border-top-right-radius: 30px;}");
+    this->setLayout(_layout);
+    this->setObjectName("ConversationPage");
+    this->setStyleSheet("#ConversationPage{background-color: rgb(242, 242, 242);border-bottom-left-radius: 30px;border-top-right-radius: 30px;}");
 }
 
 ConversationPage::~ConversationPage()

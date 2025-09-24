@@ -5,6 +5,7 @@
 
 #include <QWidget>
 // #include "common-data/CommonData.h"
+#include"core/commondata.h"
 
 #ifdef SS_PLATFORM_WINDOWS
 #ifdef SS_MESSAGE_PAGE_EXPORTS
@@ -42,7 +43,7 @@ signals:
     void sigClickedSSIDCardRequest(const QString& ssid);
 public slots:
     // only process card ui logic , don't include interaction with conversation page
-    // void addMsgCard(const MsgCombineDTO& info);
+    void addMsgCard(const MsgCombineData& info);
 private:
     explicit MessagePage(QWidget *parent = nullptr);
     ~MessagePage() override;
@@ -62,11 +63,11 @@ private:
     // ----------------- UI -----------------
 
     // --------------- BackEnd --------------
-    // QMap<ElaInteractiveCard*,MsgCombineDTO>      _tmpUserMsgList;
-    QHash<QString,int>                           _unreadMsgCount;
+    QMap<ElaInteractiveCard*,MsgCombineData>      _tmpUserMsgList;
+    QHash<qint32,int>                           _unreadMsgCount;
     QHash<ElaInteractiveCard*,ConversationPage*> _cardLinkPageHash;
-    QHash<QString,ElaInteractiveCard*>           _ssidLinkCardHash;
-    QHash<QString,int>                           _tabSSIDLinkIndex;
+    QHash<qint32,ElaInteractiveCard*>           _ssidLinkCardHash;
+    QHash<qint32,int>                           _tabSSIDLinkIndex;
     // --------------- BackEnd --------------
     static MessagePage* _messagePage;
 };

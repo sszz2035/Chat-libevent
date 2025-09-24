@@ -40,6 +40,15 @@ void CommonData::setCurUserInfo(const UserBaseInfoData &curUserInfo)
     _userinfo=curUserInfo;
 }
 
+bool CommonData::setMessageContentData(const QList<MessageContentData> &data, bool isFromRemote)
+{
+    if(!isFromRemote)
+    {
+        emit sigMsgContentData(data);
+        return true;
+    }
+}
+
 
 CommonData::CommonData() {}
 

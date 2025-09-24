@@ -197,14 +197,44 @@ void ClientRequestHandler::addFriendRequestHandler(const qint32 &ssid, bool isGr
         m_timeoutTimer.start(5000);
     }
 }
+
+void ClientRequestHandler::sendMessageContentHandler(const QList<MessageContentData>& data)
+{
+    for(MessageContentData content:data)
+    {
+        //生成请求ID
+        QString requestId=generateRequestId();
+        //将请求ID插入任务队列中
+        {
+            std::lock_guard<std::mutex>lock(m_requestsMutex);
+            m_pendingRequests.insert(requestId,{});
+        }
+
+        QJsonObject send_data;
+        //好友私聊
+        send_data.insert("cmd","private");
+        send_data.insert("request_id",requestId);
+        send_data.insert("uid",content.senderSSID);
+        send_data.insert("tofriend",content.recipient.recipientSSID);
+        send_data.insert("text",content.content);
+        ClientConServer::getInstance()->clinet_write_data(send_data);
+    }
+    //启动超时检查
+    if(!m_timeoutTimer.isActive())
+    {
+        m_timeoutTimer.start(5000);
+    }
+}
+
 ClientRequestHandler::ClientRequestHandler()
 {
     // 设置超时定时器
     m_timeoutTimer.setSingleShot(false);
     connect(&m_timeoutTimer, &QTimer::timeout, this, &ClientRequestHandler::cleanupTimeoutRequests);
 
-    connect(this,&ClientRequestHandler::queryFuzzySearchRequest,&ClientRequestHandler::queryFuzzySearchRequsetHandler);
+    connect(this,&ClientRequestHandler::queryFuzzySearchRequest,this,&ClientRequestHandler::queryFuzzySearchRequsetHandler);
 
+    connect(CommonData::getInstance(),&CommonData::sigMsgContentData,this,&ClientRequestHandler::sendMessageContentHandler);
 }
 
 ClientRequestHandler::~ClientRequestHandler()

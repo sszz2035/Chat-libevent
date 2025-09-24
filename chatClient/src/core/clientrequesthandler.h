@@ -30,6 +30,7 @@ public slots:
     void client_reply_info();
     void queryFuzzySearchRequsetHandler(const QString& content,bool isGroup,QueryCallback callback);
     void addFriendRequestHandler(const qint32& ssid,bool isGroup);
+    void sendMessageContentHandler(const QList<MessageContentData>& data);
 private:
     explicit ClientRequestHandler();
     ClientRequestHandler(const ClientRequestHandler&);

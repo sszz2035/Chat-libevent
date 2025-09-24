@@ -41,7 +41,7 @@ void ClientConServer::client_receive_data(QByteArray &ba)
 {
     int size=0,sum=0;
     bool flag=true;
-    char buf[1024]={0};
+    char buf[4096]={0};
     
     // 检查是否有足够的数据可读
     if (socket->bytesAvailable() < 4) {
@@ -49,24 +49,27 @@ void ClientConServer::client_receive_data(QByteArray &ba)
         return;
     }
     
-    qint64 bytesRead = socket->read(buf,4);
+    qint64 bytesRead = socket->peek(buf,4);
     if (bytesRead != 4) {
         SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Failed to read size header, read " + QString::number(bytesRead) + " bytes");
         return;
     }
     
     memcpy(&size,buf,4);
+    if(socket->bytesAvailable()<size+4) { return;}
     SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Expecting data size: " + QString::number(size) + " bytes, available: " + QString::number(socket->bytesAvailable()) + " bytes");
     
-    if (size > 1024 || size <= 0) {
+    if ( size <= 0) {
         SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Invalid data size: " + QString::number(size));
         return;
     }
     
+    socket->read(buf,4);
+
     while(flag)
     {
-        memset(buf,0,1024);
-        int toRead = qMin(size - sum, 1024);
+        memset(buf,0,sizeof(buf));
+        int toRead = qMin(size - sum, (int)sizeof(buf));
         bytesRead = socket->read(buf, toRead);
         if (bytesRead <= 0) {
             SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Failed to read data, read " + QString::number(bytesRead) + " bytes");
