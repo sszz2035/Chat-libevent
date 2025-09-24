@@ -171,15 +171,23 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
 {
+    ChatThread* t=static_cast<ChatThread*>(ctx);
     // 客户端连接已关闭
     if (events & BEV_EVENT_EOF)
     {
         std::cout << "[disconnect] client offline" << std::endl;
+        //删除链表节点
+        t->thread_eventcb_list_delete(bev);
+        //释放事件
         bufferevent_free(bev);
     }
     else
     {
         std::cout << "Unknown Error" << std::endl;
+        //删除链表节点
+        t->thread_eventcb_list_delete(bev);
+        //释放事件
+        bufferevent_free(bev);
     }
 }
 
@@ -695,10 +703,10 @@ void ChatThread::thread_transer_file(struct bufferevent *bev, const Json::Value 
 
 void ChatThread::thread_client_offline(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string username = v["username"].asString();
+    uint64_t uid = v["uid"].asUInt64();
 
     // 删除info的online_user中的客户端事件
-    info->list_delete_user(username);
+    info->list_delete_user(std::to_string(uid));
 
     // 释放客户端事件
     bufferevent_free(bev);
@@ -725,7 +733,7 @@ void ChatThread::thread_client_offline(struct bufferevent *bev, const Json::Valu
             continue;
         Json::Value val;
         val["cmd"] = "friend_offline";
-        val["username"] = username;
+        val["uid"] = Json::Value::UInt64(uid);
         thread_write_data(b, val);
     }
 }
@@ -804,4 +812,9 @@ void ChatThread::thread_query_fuzzy_search(struct bufferevent* bev,const Json::V
     responce["data"]=val;
     thread_write_data(bev,responce);
     db->database_disconnect();
+}
+
+void ChatThread::thread_eventcb_list_delete(struct bufferevent* bev)
+{    
+    info->list_delete_user_by_bev(bev);
 }

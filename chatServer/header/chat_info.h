@@ -28,10 +28,10 @@ public:
 /*服务器链表类*/
 class ChatInfo
 {
-
 public:
     ChatInfo();
     ~ChatInfo();
+
     /**
      * @brief 更新group_info中群的信息
      * @param g 指的是存放群成员的字符串数组
@@ -71,36 +71,42 @@ public:
      * @param groupname 群名称
      * @param owner 群主
      * @note 默认群只有群主一人
-    */
-    void list_add_new_group(const std::string &groupname,const std::string& owner);
+     */
+    void list_add_new_group(const std::string &groupname, const std::string &owner);
 
     /**
      * @brief 判断用户是否已经存在于群中
      * @param groupname 群名称
      * @param username 用户名称
      * @note 使用此函数之前请确保群是已经存在的
-    */
-    bool list_member_is_group(const std::string& groupname,const std::string& username);
+     */
+    bool list_member_is_group(const std::string &groupname, const std::string &username);
 
     /**
      * @brief 将新群成员user加入到group_info中，更新group_info中的群信息
      * @param groupname 群名称
      * @param username 用户名称
-    */
-    void list_update_group_member(const std::string &groupname,const std::string &username);
+     */
+    void list_update_group_member(const std::string &groupname, const std::string &username);
 
     /**
      * @brief 获取群的成员列表
      * @param groupname 群名称
      * @return 返回成员列表
-    */
-    std::list<std::string>&list_get_list(const std::string& groupname);  
+     */
+    std::list<std::string> &list_get_list(const std::string &groupname);
 
     /**
      * @brief 删除链表中用户结点
-     * @param username 要删除的用户名
-    */
-    void list_delete_user(const std::string& username);
+     * @param uid 要删除的用户id
+     */
+    void list_delete_user(const std::string &uid);
+
+    /**
+     * @brief 根据事件删除链表中用户结点
+     * @param bev 用户所对应事件
+     */
+    void list_delete_user_by_bev(struct bufferevent *bev);
 
 private:
     // 用于存放已登录的用户信息的链表
@@ -111,6 +117,5 @@ private:
     std::mutex list_mutex;
     // 访问群信息的锁
     std::mutex map_mutex;
-
 };
 #endif

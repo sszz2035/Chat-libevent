@@ -63,6 +63,12 @@ public:
     */
     void thread_write_data(struct bufferevent* bev,const Json::Value& v);
 
+    /**
+     * @brief 用于在event_cb回调函数中进行链表中用户的删除
+     * @param bev 对应事件
+    */
+    void thread_eventcb_list_delete(struct bufferevent* bev);
+
 private:
     
     /**
