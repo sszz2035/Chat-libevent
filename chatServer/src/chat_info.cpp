@@ -4,7 +4,7 @@
 ChatInfo::ChatInfo()
 {
     online_user=new std::list<User>;
-    group_info=new std::map<std::string,std::list<std::string>>;
+    group_info=new std::map<uint64_t,std::list<std::string>>;
 }
 
 ChatInfo::~ChatInfo()
@@ -22,29 +22,35 @@ void ChatInfo::list_update_group(std::string* g,int size)
 {
     if(size<=0) return;
   
-    std::string groupname,membername;
+    uint64_t gid;
+    std::string membername;
     std::list<std::string>l;
     //遍历g数组
     for(int i=0;i<size;i++)
     {
         int idx=g[i].find('|');
-        groupname=g[i].substr(0,idx);
-        //提取所有的成员,放入链表l中
-        int start=0;
+        gid=std::stoull(g[i].substr(0,idx));
+        // //直接提取成员，从第一个'|'之后开始
+        int start=idx+1;
+        
+        // //提取所有的成员,放入链表l中
         while(true)
         {
-            start=idx+1;
             idx=g[i].find('|',start);
             if(idx==-1) break;
             membername=g[i].substr(start,idx-start);
             l.push_back(membername);
+            start=idx+1;
         }
-        //处理最后一个成员
-        membername=g[i].substr(start);
-        l.push_back(membername);
-        //将信息插入到group_info中
-        group_info->insert(std::pair<std::string,std::list<std::string>>(groupname,l));
-        //清空链表
+        // //处理最后一个成员
+        if(start < g[i].length())
+        {
+            membername=g[i].substr(start);
+            l.push_back(membername);
+        }
+        // //将信息插入到group_info中
+        group_info->insert(std::pair<uint64_t,std::list<std::string>>(gid,l));
+        // //清空链表
         l.clear();
     }
 }
@@ -55,7 +61,7 @@ void ChatInfo::list_print_group()
     std::unique_lock<std::mutex>lock(map_mutex);
     for(auto it=group_info->begin();it!=group_info->end();it++)
     {
-        std::cout<<it->first<<" ";
+        std::cout<<"GID:"<<it->first<<" Members: ";
         for(auto i=it->second.begin();i!=it->second.end();i++)
         {
             std::cout<<*i<<" ";
@@ -100,51 +106,51 @@ struct bufferevent* ChatInfo::list_friend_online(const std::string& user)
     }
 }
 
-bool ChatInfo::list_group_is_exist(const std::string &groupname)
-{
-    //上锁
-    std::unique_lock<std::mutex>lock(map_mutex);
-    auto it=group_info->find(groupname);
-    //存在
-    if(it!=group_info->end())   return true;
-    else    return false;
-}
+// bool ChatInfo::list_group_is_exist(const std::string &groupname)
+// {
+//     //上锁
+//     std::unique_lock<std::mutex>lock(map_mutex);
+//     auto it=group_info->find(groupname);
+//     //存在
+//     if(it!=group_info->end())   return true;
+//     else    return false;
+// }
 
-void ChatInfo::list_add_new_group(const std::string &groupname,const std::string& owner)
-{
-    //上锁
-    std::unique_lock<std::mutex>lock(map_mutex);
-    std::list<std::string>l;
-    l.push_back(owner);
-    group_info->insert(std::make_pair(groupname,l));
-}
+// void ChatInfo::list_add_new_group(const std::string &groupname,const std::string& owner)
+// {
+//     //上锁
+//     std::unique_lock<std::mutex>lock(map_mutex);
+//     std::list<std::string>l;
+//     l.push_back(owner);
+//     group_info->insert(std::make_pair(groupname,l));
+// }
 
-bool ChatInfo::list_member_is_group(const std::string& groupname,const std::string& username)
-{
-    //上锁
-    std::unique_lock<std::mutex>lock(map_mutex);   
-    auto it=group_info->find(groupname);
-    auto ite=std::find(it->second.begin(),it->second.end(),username);
-    //存在于群中
-    if(ite!=it->second.end())   return true;
-    //不存在于群中
-    else return false;
-}
+// bool ChatInfo::list_member_is_group(const std::string& groupname,const std::string& username)
+// {
+//     //上锁
+//     std::unique_lock<std::mutex>lock(map_mutex);   
+//     auto it=group_info->find(groupname);
+//     auto ite=std::find(it->second.begin(),it->second.end(),username);
+//     //存在于群中
+//     if(ite!=it->second.end())   return true;
+//     //不存在于群中
+//     else return false;
+// }
 
-void ChatInfo::list_update_group_member(const std::string &groupname,const std::string &username)
-{
-    //上锁
-    std::unique_lock<std::mutex>lock(map_mutex);
-    auto it=group_info->find(groupname);
-    it->second.push_back(username);
-}
+// void ChatInfo::list_update_group_member(const std::string &groupname,const std::string &username)
+// {
+//     //上锁
+//     std::unique_lock<std::mutex>lock(map_mutex);
+//     auto it=group_info->find(groupname);
+//     it->second.push_back(username);
+// }
 
-std::list<std::string>& ChatInfo::list_get_list(const std::string& groupname)
-{
-    //上锁
-    std::unique_lock<std::mutex>lock(map_mutex);
-    return group_info->at(groupname);
-}
+// std::list<std::string>& ChatInfo::list_get_list(const std::string& groupname)
+// {
+//     //上锁
+//     std::unique_lock<std::mutex>lock(map_mutex);
+//     return group_info->at(groupname);
+// }
 
 void ChatInfo::list_delete_user(const std::string& uid)
 {
@@ -164,4 +170,53 @@ void ChatInfo::list_delete_user_by_bev(struct bufferevent* bev)
         return bev==u.bufevent;
     });
     if(it!=online_user->end())  online_user->erase(it);
+}
+
+bool ChatInfo::list_group_is_exist_by_gid(uint64_t gid)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);
+    auto it=group_info->find(gid);
+    //存在
+    if(it!=group_info->end())   return true;
+    else    return false;
+}
+
+void ChatInfo::list_add_new_group(uint64_t gid, const std::string& owner)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);
+    std::list<std::string>l;
+    l.push_back(owner);
+    group_info->insert(std::make_pair(gid,l));
+}
+
+bool ChatInfo::list_member_is_group_by_gid(uint64_t gid, const std::string& username)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);   
+    auto it=group_info->find(gid);
+    if(it==group_info->end()) return false;
+    auto ite=std::find(it->second.begin(),it->second.end(),username);
+    //存在于群中
+    if(ite!=it->second.end())   return true;
+    //不存在于群中
+    else return false;
+}
+
+void ChatInfo::list_update_group_member_by_gid(uint64_t gid, const std::string &uid)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);
+    auto it=group_info->find(gid);
+    if(it!=group_info->end()) {
+        it->second.push_back(uid);
+    }
+}
+
+std::list<std::string>& ChatInfo::list_get_list_by_gid(uint64_t gid)
+{
+    //上锁
+    std::unique_lock<std::mutex>lock(map_mutex);
+    return group_info->at(gid);
 }

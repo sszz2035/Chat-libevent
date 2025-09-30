@@ -67,12 +67,18 @@ public:
     bool list_group_is_exist(const std::string &groupname);
 
     /**
-     * @brief 添加新群到group_info中
-     * @param groupname 群名称
-     * @param owner 群主
-     * @note 默认群只有群主一人
+     * @brief 判断群是否已存在（通过gid）
+     * @param gid 群ID
+     * @return 存在返回true 不存在返回false
      */
-    void list_add_new_group(const std::string &groupname, const std::string &owner);
+    bool list_group_is_exist_by_gid(uint64_t gid);
+
+    /**
+     * @brief 添加新群到group_info中
+     * @param gid 群ID
+     * @param owner 群主
+     */
+    void list_add_new_group(uint64_t gid, const std::string &owner);
 
     /**
      * @brief 判断用户是否已经存在于群中
@@ -83,6 +89,14 @@ public:
     bool list_member_is_group(const std::string &groupname, const std::string &username);
 
     /**
+     * @brief 判断用户是否已经存在于群中（通过gid）
+     * @param gid 群ID
+     * @param username 用户名称
+     * @note 使用此函数之前请确保群是已经存在的
+     */
+    bool list_member_is_group_by_gid(uint64_t gid, const std::string &username);
+
+    /**
      * @brief 将新群成员user加入到group_info中，更新group_info中的群信息
      * @param groupname 群名称
      * @param username 用户名称
@@ -90,11 +104,25 @@ public:
     void list_update_group_member(const std::string &groupname, const std::string &username);
 
     /**
+     * @brief 将新群成员user加入到group_info中，更新group_info中的群信息（通过gid）
+     * @param gid 群ID
+     * @param uid 用户id
+     */
+    void list_update_group_member_by_gid(uint64_t gid, const std::string &uid);
+
+    /**
      * @brief 获取群的成员列表
      * @param groupname 群名称
      * @return 返回成员列表
      */
     std::list<std::string> &list_get_list(const std::string &groupname);
+
+    /**
+     * @brief 获取群的成员列表（通过gid）
+     * @param gid 群ID
+     * @return 返回成员列表
+     */
+    std::list<std::string> &list_get_list_by_gid(uint64_t gid);
 
     /**
      * @brief 删除链表中用户结点
@@ -111,8 +139,8 @@ public:
 private:
     // 用于存放已登录的用户信息的链表
     std::list<User> *online_user;
-    // 用于存放用户的群的信息
-    std::map<std::string, std::list<std::string>> *group_info;
+    // 用于存放用户的群的信息，key为gid，value为成员列表
+    std::map<uint64_t, std::list<std::string>> *group_info;
     // 访问在线用户的锁
     std::mutex list_mutex;
     // 访问群信息的锁

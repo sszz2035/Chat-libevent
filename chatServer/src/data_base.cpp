@@ -161,12 +161,15 @@ int DataBase::database_get_group_info(std::string* g)
     //读取每一行的结果
     MYSQL_ROW r;
     int idx=0;//数组序列号
-    while(r=mysql_fetch_row(res))
+     while((r=mysql_fetch_row(res))!=NULL)
     {
-        g[idx]+=r[0];
-        g[idx]+='|';
-        g[idx]+=r[2];
-        idx++;
+        if(r[0]!=NULL && r[3]!=NULL)
+        {
+            g[idx]+=r[0]; // gid
+            g[idx]+='|';
+            g[idx]+=r[3]; // groupmember
+            idx++;
+        }
     }
 
     //释放结果
@@ -184,6 +187,7 @@ bool DataBase::database_init_table()
     }
     //初始化数据库  
     const char* g="CREATE TABLE IF NOT EXISTS chat_group(\
+    gid BIGINT PRIMARY KEY,\
     groupname VARCHAR(128),\
     groupowner VARCHAR(128),\
     groupmember VARCHAR(4096)\
@@ -354,6 +358,40 @@ void DataBase::database_update_friendlist(const std::string& u,const std::string
     }
 }
 
+void DataBase::database_update_grouplist(const std::string& u,const std::string& gid)
+{
+    std::string grouplist;
+    //查询数据库中的u的好友列表
+    char sql[256]={0};
+    sprintf(sql,"SELECT COALESCE(grouplist,'') FROM chat_user WHERE uid=%s;",u.c_str());
+    MYSQL_ROW row;
+    if(!exec_query_and_fetch_row(sql,row))
+    {
+        LOG_ERROR("exec_query_and_fetch_row");
+        return;
+    }
+    grouplist=std::string(row[0]);
+    //如果为空串
+    if(grouplist.empty())
+    {
+        grouplist.append(gid);
+    }
+    else
+    {
+        grouplist.append("|");
+        grouplist.append(gid);
+    }
+
+    //更新好友列表
+    memset(sql,0,sizeof(sql));
+    sprintf(sql,"UPDATE chat_user SET grouplist='%s' WHERE uid=%s;",grouplist.c_str(),u.c_str());
+    if(!exec_update(sql))
+    {
+        LOG_ERROR("exec_update");
+        return;
+    }
+}
+
 void DataBase::database_add_friend(const Json::Value& v)
 {
     uint64_t uid=v["uid"].asUInt64();
@@ -362,15 +400,23 @@ void DataBase::database_add_friend(const Json::Value& v)
     database_update_friendlist(std::to_string(friend_uid),std::to_string(uid));
 }
 
-void DataBase::database_add_new_group(const std::string &groupname,const std::string &owner)
+uint64_t DataBase::database_add_new_group(const std::string &groupname,const std::string &owner)
 {
+      // 生成群组ID
+       uint64_t gid = 0;
+       if(id_generator_) {
+        gid = id_generator_->generate_uid();
+        }
+    
     char sql[256]={0};
-    sprintf(sql,"INSERT INTO chat_group VALUES('%s','%s','%s');",groupname.c_str(),owner.c_str(),owner.c_str());
+    sprintf(sql,"INSERT INTO chat_group(gid,groupname,groupowner,groupmember) VALUES(%llu,'%s','%s','%s');", gid, groupname.c_str(),
+     owner.c_str(), owner.c_str());
     if(!exec_update(sql))
     {
         LOG_ERROR("exec_update");
-        return;
+        return 0;
     }
+    return gid;
 }
 
 void DataBase::database_update_group_member(const std::string &groupname,const std::string &username)
@@ -396,3 +442,81 @@ void DataBase::database_update_group_member(const std::string &groupname,const s
     }
 }
 
+uint64_t DataBase::database_get_gid_by_groupname(const std::string &groupname)
+{
+    char sql[256]={0};
+    sprintf(sql,"SELECT gid FROM chat_group WHERE groupname='%s';",groupname.c_str());
+    MYSQL_ROW row;
+    if(exec_query_and_fetch_row(sql, row))
+    {
+        return std::stoull(row[0]);
+    }
+    return 0;
+}
+
+std::string DataBase::database_get_groupname_by_gid(uint64_t gid)
+{
+    char sql[256]={0};
+    sprintf(sql,"SELECT groupname FROM chat_group WHERE gid=%llu;",gid);
+    MYSQL_ROW row;
+    if(exec_query_and_fetch_row(sql, row))
+    {
+        return std::string(row[0]);
+    }
+    return "";
+}
+
+void DataBase::database_update_group_member_by_gid(uint64_t gid, const std::string &uid)
+{
+    std::string memberlist;
+    char sql[256]={0};
+    sprintf(sql,"SELECT groupmember FROM chat_group WHERE gid=%llu;",gid);
+    MYSQL_ROW row;
+    if(!exec_query_and_fetch_row(sql,row))
+    {
+        LOG_ERROR("exec_query_and_fetch_row");
+        return;
+    }
+    if(row[0]==NULL)    return;
+    memberlist=row[0];
+    memberlist.append("|");
+    memberlist.append(uid);
+    memset(sql,0,sizeof(sql));
+    sprintf(sql,"UPDATE chat_group SET groupmember='%s' WHERE gid=%llu;",memberlist.c_str(),gid);
+    if(!exec_update(sql))
+    {
+        LOG_ERROR("exec_update");
+    }
+}
+
+void DataBase::database_update_grouplist_by_uid(uint64_t uid, const std::string &gid)
+{
+    std::string grouplist;
+    char sql[256]={0};
+    sprintf(sql,"SELECT COALESCE(grouplist,'') FROM chat_user WHERE uid=%llu;",uid);
+    MYSQL_ROW row;
+    if(!exec_query_and_fetch_row(sql,row))
+    {
+        LOG_ERROR("exec_query_and_fetch_row");
+        return;
+    }
+    grouplist=std::string(row[0]);
+    //如果为空串
+    if(grouplist.empty())
+    {
+        grouplist.append(gid);
+    }
+    else
+    {
+        grouplist.append("|");
+        grouplist.append(gid);
+    }
+    //更新群组列表
+    memset(sql,0,sizeof(sql));
+    sprintf(sql,"UPDATE chat_user SET grouplist='%s' WHERE uid=%llu;",grouplist.c_str(),uid);
+    if(!exec_update(sql))
+    {
+        LOG_ERROR("exec_update");
+        return;
+    }
+}

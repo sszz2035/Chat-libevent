@@ -98,7 +98,6 @@ private:
      * @brief 根据"|"来解析字符串，并将解析的结果放入s中
      * @param f 待解析的字符串
      * @param s 字符串数组，存放解析结果
-     * @param buffer_size 缓冲区大小
      * @return 返回解析出的字符串个数
     */
     int thread_parse_string(std::string &f,std::string *s);

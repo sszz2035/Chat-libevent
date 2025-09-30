@@ -1,5 +1,5 @@
 #include "chat_thread.h"
-#include<sstream>
+#include <sstream>
 #include "log.h"
 ChatThread::ChatThread() : base(event_base_new()),
                            _thread(std::make_unique<std::thread>(worker, this)),
@@ -65,32 +65,32 @@ struct event_base *ChatThread::thread_get_base()
 void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
 {
     ChatThread *t = (ChatThread *)ctx;
-    
+
     // 循环处理缓冲区中的所有数据包
     while (true)
-    {   
+    {
         // 检查是否有足够的数据读取长度字段
         struct evbuffer *input = bufferevent_get_input(bev);
         size_t available = evbuffer_get_length(input);
-        int packet_size=0;//数据包大小
+        int packet_size = 0; // 数据包大小
         evbuffer_copyout(input, &packet_size, 4);
 
-        //解决数据包过大时分包问题
-        if (available < 4+packet_size)
+        // 解决数据包过大时分包问题
+        if (available < 4 + packet_size)
         {
             break; // 没有足够的数据读取长度，等待下次回调
         }
-        std::cout<<"packet_size:"<<packet_size<<std::endl;
+        std::cout << "packet_size:" << packet_size << std::endl;
 
-        if(packet_size<=0||packet_size>MAX_PACKET_SIZE)
+        if (packet_size <= 0 || packet_size > MAX_PACKET_SIZE)
         {
             LOG_ERROR("packet_size error");
             return;
         }
 
-        //动态缓冲区
-        std::vector<char>buf(packet_size+1);
-        memset(buf.data(),0,buf.size());
+        // 动态缓冲区
+        std::vector<char> buf(packet_size + 1);
+        memset(buf.data(), 0, buf.size());
 
         // 尝试读取一个完整的数据包
         if (!t->thread_read_data(bev, buf.data(), buf.size()))
@@ -98,7 +98,7 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
             LOG_PERROR("thread_read_data");
             return;
         }
-        
+
         std::cout << "--thread " << t->thread_get_id() << " receive data " << buf.data() << std::endl;
 
         // 解析json数据
@@ -157,36 +157,36 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
             t->thread_client_offline(bev, val);
         }
         // 处理查询用户uid事件
-        else if(val["cmd"]=="query_by_uid")
+        else if (val["cmd"] == "query_by_uid")
         {
-            t->thread_query_user_by_uid(bev,val);
+            t->thread_query_user_by_uid(bev, val);
         }
         // 处理模糊查询事件
-        else if(val["cmd"]=="fuzzy_search")
+        else if (val["cmd"] == "fuzzy_search")
         {
-            t->thread_query_fuzzy_search(bev,val);
+            t->thread_query_fuzzy_search(bev, val);
         }
     }
 }
 
 void ChatThread::thread_event_cb(struct bufferevent *bev, short events, void *ctx)
 {
-    ChatThread* t=static_cast<ChatThread*>(ctx);
+    ChatThread *t = static_cast<ChatThread *>(ctx);
     // 客户端连接已关闭
     if (events & BEV_EVENT_EOF)
     {
         std::cout << "[disconnect] client offline" << std::endl;
-        //删除链表节点
+        // 删除链表节点
         t->thread_eventcb_list_delete(bev);
-        //释放事件
+        // 释放事件
         bufferevent_free(bev);
     }
     else
     {
         std::cout << "Unknown Error" << std::endl;
-        //删除链表节点
+        // 删除链表节点
         t->thread_eventcb_list_delete(bev);
-        //释放事件
+        // 释放事件
         bufferevent_free(bev);
     }
 }
@@ -207,25 +207,25 @@ bool ChatThread::thread_read_data(struct bufferevent *bev, char *s, size_t buffe
         LOG_ERROR("Invalid data size");
         return false;
     }
-    
+
     // // 检查目标缓冲区是否有足够空间
     if (sz >= buffer_size)
     {
         LOG_ERROR("Buffer too small for data size");
         return false;
     }
-    
+
     size_t count = 0;
-    //临时缓冲区
+    // 临时缓冲区
     char buf[4096] = {0};
-    
+
     while (count < sz)
     {
         // 计算本次需要读取的字节数
         size_t bytes_to_read = sz - count;
         if (bytes_to_read > sizeof(buf))
             bytes_to_read = sizeof(buf);
-        
+
         // 读取数据
         ssize_t bytes_read = bufferevent_read(bev, buf, bytes_to_read);
         if (bytes_read <= 0)
@@ -233,7 +233,7 @@ bool ChatThread::thread_read_data(struct bufferevent *bev, char *s, size_t buffe
             LOG_PERROR("bufferevent_read data");
             return false;
         }
-        
+
         // 安全地拷贝数据到目标缓冲区
         size_t remaining_space = buffer_size - count - 1; // -1 for null terminator
         if (bytes_read > remaining_space)
@@ -241,14 +241,14 @@ bool ChatThread::thread_read_data(struct bufferevent *bev, char *s, size_t buffe
             LOG_ERROR("Buffer overflow prevented");
             return false;
         }
-        
+
         memcpy(s + count, buf, bytes_read);
         count += bytes_read;
-        
+
         // 清空临时缓冲区
         memset(buf, 0, sizeof(buf));
     }
-    
+
     // 确保字符串以null结尾
     s[count] = '\0';
     return true;
@@ -277,29 +277,29 @@ void ChatThread::thread_register(struct bufferevent *bev, Json::Value &v)
     // 用户不存在
     // else
     // {
-        // 将用户添加到数据库中，会自动生成UID
-        db->database_insert_user_info(v);
+    // 将用户添加到数据库中，会自动生成UID
+    db->database_insert_user_info(v);
 
-        // 获取新生成的UID
-        std::string username = v["username"].asString();
-        char sql[256];
-        sprintf(sql, "SELECT uid FROM chat_user WHERE username='%s';", username.c_str());
-        MYSQL_ROW row;
-        uint64_t new_uid = 0;
+    // 获取新生成的UID
+    std::string username = v["username"].asString();
+    char sql[256];
+    sprintf(sql, "SELECT uid FROM chat_user WHERE username='%s';", username.c_str());
+    MYSQL_ROW row;
+    uint64_t new_uid = 0;
 
-        // 查询UID（数据库已经连接）
-        if (db->exec_query_and_fetch_row(sql, row))
-        {
-            new_uid = std::stoull(row[0]);
-        }
+    // 查询UID（数据库已经连接）
+    if (db->exec_query_and_fetch_row(sql, row))
+    {
+        new_uid = std::stoull(row[0]);
+    }
 
-        // 发送回应给客户端
-        Json::Value val;
-        val["cmd"] = "register_reply";
-        val["result"] = "success";
-        val["uid"] = Json::Value::UInt64(new_uid);
-        val["username"] = username;
-        thread_write_data(bev, val);
+    // 发送回应给客户端
+    Json::Value val;
+    val["cmd"] = "register_reply";
+    val["result"] = "success";
+    val["uid"] = Json::Value::UInt64(new_uid);
+    val["username"] = username;
+    thread_write_data(bev, val);
     // }
 
     // 断开数据库
@@ -312,8 +312,8 @@ void ChatThread::thread_write_data(struct bufferevent *bev, const Json::Value &v
     Json::FastWriter writer;
     std::string val = writer.write(v);
     int len = val.size();
-    size_t total_size=4+len;
-    std::vector<char>wbuf(total_size);
+    size_t total_size = 4 + len;
+    std::vector<char> wbuf(total_size);
     memcpy(&wbuf[0], &len, 4);
     memcpy(&wbuf[0] + 4, val.c_str(), len);
     // 将数据写入输出缓冲区中
@@ -455,7 +455,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
     if (!v.isMember("friend_uid") || !v["friend_uid"].isUInt64())
     {
         val["cmd"] = "addfriend_reply";
-        val["request_id"]=v["request_id"];
+        val["request_id"] = v["request_id"];
         val["result"] = "invalid_request";
         thread_write_data(bev, val);
         db->database_disconnect();
@@ -469,7 +469,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
     if (!db->database_user_is_exist_by_uid(friend_uid))
     {
         val["cmd"] = "addfriend_reply";
-        val["request_id"]=v["request_id"];
+        val["request_id"] = v["request_id"];
         val["result"] = "not_exist";
         thread_write_data(bev, val);
         db->database_disconnect();
@@ -493,7 +493,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
                 if (std::stoull(Friend[i]) == friend_uid)
                 {
                     val["cmd"] = "addfriend_reply";
-                    val["request_id"]=v["request_id"];
+                    val["request_id"] = v["request_id"];
                     val["result"] = "already_friend";
                     thread_write_data(bev, val);
                     db->database_disconnect();
@@ -525,7 +525,7 @@ void ChatThread::thread_add_friend(struct bufferevent *bev, const Json::Value &v
     val["result"] = "success";
     val["friend_uid"] = Json::Value::UInt64(friend_uid);
     val["friend_username"] = friend_name;
-    val["request_id"]=v["request_id"];
+    val["request_id"] = v["request_id"];
     thread_write_data(bev, val);
 
     db->database_disconnect();
@@ -537,7 +537,8 @@ void ChatThread::thread_private_chat(struct bufferevent *bev, const Json::Value 
     uint64_t friendUid = v["tofriend"].asUInt64();
     struct bufferevent *b = info->list_friend_online(std::to_string(friendUid));
     Json::Value val;
-    if(v.isMember("request_id"))    val["request_id"]=v["request_id"];
+    if (v.isMember("request_id"))
+        val["request_id"] = v["request_id"];
     // 如果好友不在线
     if (b == NULL)
     {
@@ -548,39 +549,72 @@ void ChatThread::thread_private_chat(struct bufferevent *bev, const Json::Value 
     }
     // 好友在线
     val["cmd"] = "private";
-    val["fromfriend"] =Json::Value::UInt64(userUid);
+    val["fromfriend"] = Json::Value::UInt64(userUid);
     val["text"] = v["text"];
     thread_write_data(b, val);
 }
 
 void ChatThread::thread_create_group(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string groupname = v["groupname"].asString();
-    Json::Value val;
-    // 判断是否已有群
-    if (info->list_group_is_exist(groupname))
-    {
-        val["cmd"] = "creategroup_reply";
-        val["result"] = "exist";
-        thread_write_data(bev, val);
-        return;
-    }
+    std::string groupname = v["ownername"].asString() + "的小群";
+    // 群成员
+    std::string groupMember = v["group_member"].asString();
 
+    //群主id
+    uint64_t owner_id=v["owner"].asUInt64();
+    std::string owner=std::to_string(owner_id);
+
+    Json::Value val;
+    // 解析群成员
+    std::string member[1024];
+    int memberCount = thread_parse_string(groupMember, member);
     // 在数据库中添加新群
     if (!db->database_connect())
     {
         LOG_ERROR("database_connect");
         return;
     }
-    db->database_add_new_group(groupname, v["owner"].asString());
-    db->database_disconnect();
+    uint64_t gid =db->database_add_new_group(groupname, owner);
+
+    if(gid==0)
+    {
+        LOG_ERROR("Failed to create group");
+        db->database_disconnect();
+        return;
+    }
 
     // 将新群添加到群信息中
-    info->list_add_new_group(groupname, v["owner"].asString());
+    info->list_add_new_group(gid, owner);
+
+    // 将所有成员添加到群中（包括群主）
+    std::string gid_str = std::to_string(gid);
+
+    // 更新群主的群组列表
+    db->database_update_grouplist_by_uid(owner_id, gid_str);
+
+    // 再添加其他成员
+    for (int i = 0; i < memberCount; i++)
+    {
+        // 如果成员不是群主，则添加到群中
+        if (member[i] != owner)
+        {
+            db->database_update_group_member_by_gid(gid, member[i]);
+            info->list_update_group_member_by_gid(gid, member[i]);
+            // 更新成员的群组列表
+            uint64_t member_uid = std::stoull(member[i]);
+            db->database_update_grouplist_by_uid(member_uid, gid_str);
+        }
+    }
+
+    db->database_disconnect();
 
     val["cmd"] = "creategroup_reply";
     val["result"] = "success";
+    val["gid"] = Json::Value::UInt64(gid);
+    val["request_id"]=v["request_id"];
+    val["groupname"] = groupname;
     thread_write_data(bev, val);
+
 }
 
 void ChatThread::thread_join_group(struct bufferevent *bev, const Json::Value &v)
@@ -588,32 +622,48 @@ void ChatThread::thread_join_group(struct bufferevent *bev, const Json::Value &v
     std::string groupname = v["groupname"].asString();
     std::string username = v["username"].asString();
     Json::Value val;
-    // 判断群是否存在
-    if (!info->list_group_is_exist(groupname))
+
+    // 获取群ID
+    uint64_t gid = 0;
+    if (!db->database_connect())
+    {
+        LOG_ERROR("database_connect");
+        val["cmd"] = "joingroup_reply";
+        val["result"] = "db_error";
+        thread_write_data(bev, val);
+        return;
+    }
+    //有bug
+    gid = db->database_get_gid_by_groupname(groupname);
+    db->database_disconnect();
+
+    if (gid == 0)
     {
         val["cmd"] = "joingroup_reply";
         val["result"] = "not_exist";
         thread_write_data(bev, val);
         return;
     }
+
     // 判断群中是否已有当前成员
-    if (info->list_member_is_group(groupname, username))
+    if (info->list_member_is_group_by_gid(gid, username))
     {
         val["cmd"] = "joingroup_reply";
         val["result"] = "already";
         thread_write_data(bev, val);
         return;
     }
+
     // 修改数据库
     db->database_connect();
     db->database_update_group_member(groupname, username);
     db->database_disconnect();
 
     // 更新链表中群信息
-    info->list_update_group_member(groupname, username);
+    info->list_update_group_member_by_gid(gid, username);
 
     // 向群中所有用户发送消息
-    std::list<std::string> l = info->list_get_list(groupname);
+    std::list<std::string> l = info->list_get_list_by_gid(gid);
     std::string member;
     for (auto it = l.begin(); it != l.end(); it++)
     {
@@ -625,27 +675,35 @@ void ChatThread::thread_join_group(struct bufferevent *bev, const Json::Value &v
         if (b == NULL)
             continue;
         val["cmd"] = "new_member_join";
+        val["gid"] = Json::Value::UInt64(gid);
         val["groupname"] = groupname;
         val["username"] = username;
         thread_write_data(b, val);
     }
     // 去掉最后的'|'
-    member.erase(member.size() - 1);
+    if (!member.empty())
+    {
+        member.erase(member.size() - 1);
+    }
     val.clear();
     // 向自己发送消息
     val["cmd"] = "joingroup_reply";
     val["result"] = "success";
+    val["gid"] = Json::Value::UInt64(gid);
+    val["groupname"] = groupname;
     val["member"] = member;
     thread_write_data(bev, val);
 }
 
 void ChatThread::thread_group_chat(struct bufferevent *bev, const Json::Value &v)
 {
+    uint64_t gid = v["gid"].asUInt64();
     std::string groupname = v["groupname"].asString();
     std::string username = v["username"].asString();
     std::string text = v["text"].asString();
+
     // 获取成员列表
-    std::list<std::string> member = info->list_get_list(groupname);
+    std::list<std::string> member = info->list_get_list_by_gid(gid);
     // 将消息转发给群成员
     for (auto it = member.begin(); it != member.end(); it++)
     {
@@ -656,6 +714,7 @@ void ChatThread::thread_group_chat(struct bufferevent *bev, const Json::Value &v
             continue;
         Json::Value val;
         val["cmd"] = "groupchat_reply";
+        val["gid"] = Json::Value::UInt64(gid);
         val["groupname"] = groupname;
         val["from"] = username;
         val["text"] = text;
@@ -738,83 +797,86 @@ void ChatThread::thread_client_offline(struct bufferevent *bev, const Json::Valu
     }
 }
 
-void ChatThread::thread_query_user_by_uid(struct bufferevent* bev,const Json::Value& v)
+void ChatThread::thread_query_user_by_uid(struct bufferevent *bev, const Json::Value &v)
 {
     Json::Value val;
-    if(!v.isMember("uid"))
+    if (!v.isMember("uid"))
     {
-        val["cmd"]="invaild_request";
-        thread_write_data(bev,val);
+        val["cmd"] = "invaild_request";
+        thread_write_data(bev, val);
         return;
     }
-    uint64_t uid=v["uid"].asUInt64();
+    uint64_t uid = v["uid"].asUInt64();
     db->database_connect();
-    if(!db->database_user_is_exist_by_uid(uid))
+    if (!db->database_user_is_exist_by_uid(uid))
     {
-        val["cmd"]="not_exist";
-        thread_write_data(bev,val);
+        val["cmd"] = "not_exist";
+        thread_write_data(bev, val);
         db->database_disconnect();
         return;
     }
-    val["cmd"]="query_uid_reply";
-    val["uid"]=Json::Value::UInt64(uid);
-    val["username"]=db->database_get_username_by_uid(uid);
-    if(info->list_friend_online(std::to_string(uid)))   val["status"]="online";
-    else    val["status"]="offline";
-    val["request_id"]=v["request_id"];
-    thread_write_data(bev,val);
+    val["cmd"] = "query_uid_reply";
+    val["uid"] = Json::Value::UInt64(uid);
+    val["username"] = db->database_get_username_by_uid(uid);
+    if (info->list_friend_online(std::to_string(uid)))
+        val["status"] = "online";
+    else
+        val["status"] = "offline";
+    val["request_id"] = v["request_id"];
+    thread_write_data(bev, val);
     db->database_disconnect();
 }
 
-void ChatThread::thread_query_fuzzy_search(struct bufferevent* bev,const Json::Value& v)
+void ChatThread::thread_query_fuzzy_search(struct bufferevent *bev, const Json::Value &v)
 {
     Json::Value responce;
-    Json::Value val;//json数组 存储数据
-    std::string content=v["content"].asString();
-    responce["cmd"]="search_reply";
-    responce["request_id"]=v["request_id"];
+    Json::Value val; // json数组 存储数据
+    std::string content = v["content"].asString();
+    responce["cmd"] = "search_reply";
+    responce["request_id"] = v["request_id"];
     db->database_connect();
-    char sql[256]={0};
-    bool isGroup=(v["type"]=="group");
+    char sql[256] = {0};
+    bool isGroup = (v["type"] == "group");
     std::stringstream query;
-    query<<"\'\%"<<content<<"\%\'";
+    query << "\'\%" << content << "\%\'";
 
-    //1.0版本 后期考虑用分页查询、索引优化、 可以加入功能：中间隔字仍旧匹配
-    if(!isGroup)
+    // 1.0版本 后期考虑用分页查询、索引优化、 可以加入功能：中间隔字仍旧匹配
+    if (!isGroup)
     {
-        responce["type"]="friend";
-        sprintf(sql,"SELECT uid,username FROM chat_user\
-        WHERE uid LIKE %s OR username LIKE %s;",query.str().c_str(),query.str().c_str());
+        responce["type"] = "friend";
+        sprintf(sql, "SELECT uid,username FROM chat_user\
+        WHERE uid LIKE %s OR username LIKE %s;",
+                query.str().c_str(), query.str().c_str());
     }
     else
     {
-        responce["type"]="group";
+        responce["type"] = "group";
     }
     std::vector<std::vector<std::string>> rows;
-    int sz=db->exec_query_and_fetch_rows(sql,rows);
+    int sz = db->exec_query_and_fetch_rows(sql, rows);
 
-    if(sz==0)
+    if (sz == 0)
     {
-        responce["data"]="null";
-        thread_write_data(bev,responce);
+        responce["data"] = "null";
+        thread_write_data(bev, responce);
         db->database_disconnect();
-        return ;
+        return;
     }
 
-    //对查找到的数据进行处理
-    for(int i=0;i<sz;i++)
+    // 对查找到的数据进行处理
+    for (int i = 0; i < sz; i++)
     {
         Json::Value row_data;
-        row_data["uid"]=rows[i][0];
-        row_data["username"]=rows[i][1];
+        row_data["uid"] = rows[i][0];
+        row_data["username"] = rows[i][1];
         val.append(row_data);
     }
-    responce["data"]=val;
-    thread_write_data(bev,responce);
+    responce["data"] = val;
+    thread_write_data(bev, responce);
     db->database_disconnect();
 }
 
-void ChatThread::thread_eventcb_list_delete(struct bufferevent* bev)
-{    
+void ChatThread::thread_eventcb_list_delete(struct bufferevent *bev)
+{
     info->list_delete_user_by_bev(bev);
 }
