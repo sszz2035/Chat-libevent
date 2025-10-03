@@ -72,7 +72,9 @@ void ContactModel::delGroupingItem(const QString &groupingName, const GroupingIt
                 delete it->first;
                 items.erase(it);
 
-                if (items.isEmpty() && groupingName != "我的好友") {
+                if (items.isEmpty() && groupingName != "我的好友" && 
+                    groupingName != "未命名群聊" && groupingName != "我创建的群聊" && 
+                    groupingName != "我管理的群聊" && groupingName != "我加入的群聊") {
                     delGrouping(groupingName);
                 }
                 break;

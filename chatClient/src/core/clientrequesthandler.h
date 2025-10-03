@@ -13,6 +13,7 @@
 class ClientRequestHandler:public QObject
 {
     Q_OBJECT
+
 public:
     static ClientRequestHandler* getInstance();
     void destroyInstance();
@@ -20,17 +21,23 @@ public:
     // 异步查询用户信息
     using QueryCallback = std::function<void(const QJsonObject&)>;
     void queryUserInfoByUid(const qint32 &uid, QueryCallback callback);
+
+    void queryGroupInfoByGid(const qint32& gid,QueryCallback callback);
+
 signals:
     void userInfoReceived(const QJsonObject& userInfo);
     //模糊搜索请求
     void queryFuzzySearchRequest(const QString& content,bool isGroup,QueryCallback callback);
     //好友申请结果回复
     void addFriendResponse(const QJsonObject& obj);
+
 public slots:
     void client_reply_info();
     void queryFuzzySearchRequsetHandler(const QString& content,bool isGroup,QueryCallback callback);
     void addFriendRequestHandler(const qint32& ssid,bool isGroup);
     void sendMessageContentHandler(const QList<MessageContentData>& data);
+    void createGroupRequestHandler(const QList<int>& data);
+
 private:
     explicit ClientRequestHandler();
     ClientRequestHandler(const ClientRequestHandler&);

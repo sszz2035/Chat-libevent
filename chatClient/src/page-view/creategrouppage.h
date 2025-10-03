@@ -13,7 +13,7 @@ class QVBoxLayout;
 class QHBoxLayout;
 class QStandardItemModel;
 
-// struct UserBaseInfoDTO;
+struct UserBaseInfoData;
 
 class CreateGroupPage : public QWidget{
     Q_OBJECT
@@ -29,7 +29,7 @@ public slots:
     void sltShowLoading();
     void sltHideLoading();
 
-    // void sltAddToCreateGroupList(const UserBaseInfoDTO &dto);
+    void sltAddToCreateGroupList(const UserBaseInfoData &dto);
 
 protected:
     void initWindow();
@@ -50,7 +50,8 @@ private:
 
     // --------------- BackEnd --------------
     QStandardItemModel              * _dataModel        = nullptr;
-    // QHash<QString,UserBaseInfoDTO>    _toAddUserHash;
+    //key:用户ssid val:用户信息
+    QHash<qint32,UserBaseInfoData>    _toAddUserHash;
     // --------------- BackEnd --------------
 
     SSMaskWidget  *_maskWidget;

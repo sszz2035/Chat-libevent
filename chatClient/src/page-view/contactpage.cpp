@@ -55,25 +55,36 @@ bool ContactPage::loadCacheContact(const QList<FriendshipData> &caches)
     for (auto &it : caches) {
         bool isGroup = (it.friendType==2);
         if (!isGroup) {
-//             UserBaseInfoDTO uInfo = g_pCommonData->getUserInfoBySSID(it.friendSSID);
                UserBaseInfoData uInfo;
                uInfo.ssid=it.friendSSID;
                uInfo.username=it.friendName;
                addFriendGrouping(it.groupingName);
-            addContactInfo(it.groupingName,{uInfo,{},{},it.status,false});
+               addContactInfo(it.groupingName,{uInfo,{},{},it.status,false});
         }
-        // else {
-//             GroupBaseInfoDTO gInfo = g_pCommonData->getGroupInfoDataBySSID(it.friendSSID);
-//             QList<GroupMemberInfoDTO> members = g_pCommonData->getGroupMemberInfoData(it.friendSSID,100,1);
-//             addContactInfo(it.groupingName,{
-//                                                 {},gInfo,members,
-//                                                 "",-1,true
-//                                             });
-//         }
+        else {
+                QStringList memberList =it.status.split('|');
+                MsgCombineData info;
+                QList<GroupMemberInfoData>memberInfo;
+                info.isGroup=true;
+                info.groupBaseInfo.ssidGroup=it.friendSSID;
+                info.groupBaseInfo.createSSID=memberList[0].toInt();
+                info.groupBaseInfo.groupName=it.friendName;
+                // //处理群成员数据
+                for(int i=0;i<memberList.size();i++)
+                {
+                    GroupMemberInfoData data;
+                    data.ssidGroup=it.friendSSID;
+                    data.ssidMember=memberList[i].toInt();
+                    memberInfo.append(data);
+                }
+                info.groupMemberInfo=memberInfo;
+                addContactInfo(it.groupingName,info);
+        }
     }
     return true;
 }
 
+//工厂函数
 ElaTreeView * ContactPage::getFriendTreeView() {
     auto cpObj = new ElaTreeView();
     ContactModel* copiedModel = _friendModel->deepCopy(this);
@@ -92,7 +103,7 @@ ElaTreeView * ContactPage::getFriendTreeView() {
         if (index.parent().isValid()) {
             QString clickedSSID = index.data(ContactDelegate::SSIDRole).toString();
             if (clickedSSID.isEmpty()) return;
-            // emit sigTriggerAddToCreateGroupList(_ssidToCardInfoHash.value(clickedSSID).userBaseInfo);
+            emit sigTriggerAddToCreateGroupList(_ssidToCardInfoHash.value(clickedSSID).userBaseInfo);
         }
     });
 
@@ -111,26 +122,39 @@ void ContactPage::addContactInfo(const QString& groupingName,const MsgCombineDat
         }else {
             avatarPath = info.userBaseInfo.avatarPath;
         }
+
+        /*
+        从代码分析可以看出，这种"先删除后添加"的模式主要用于：
+
+          1. 防止重复添加：在 addGroupingItem 之前先调用 delGroupingItem，确保同一个联系人不会在同一个分组中重复出现
+          2. 信息更新：当联系人信息发生变化时（如头像路径、用户名、状态等），先删除旧的条目，再添加新的条目来确保显示的是最
+          新信息
+          3. 统一处理逻辑：无论是新增联系人还是更新现有联系人，都使用同一个函数
+          addContactInfo，通过先删除后添加的方式来统一处理
+
+          在 contactmodel.cpp:64-82 中，delGroupingItem 函数会查找并删除匹配的条目，如果找不到匹配的条目也不会报错，所以这
+          种"先删除后添加"的模式是安全的，可以同时处理新增和更新两种情况。
+        */
         _friendModel->delGroupingItem(groupingName,{
-                                                        QString::number(info.userBaseInfo.ssid),info.userBaseInfo.username,"离线",avatarPath
+                                                        QString::number(info.userBaseInfo.ssid),info.userBaseInfo.username,info.content,avatarPath
                                                     });
         _friendModel->addGroupingItem(groupingName,{
-                                                        QString::number(info.userBaseInfo.ssid),info.userBaseInfo.username,"离线",avatarPath
+                                                        QString::number(info.userBaseInfo.ssid),info.userBaseInfo.username,info.content,avatarPath
                                                     });
         _groupingInfos["friend"][groupingName].append(info);
         _ssidToCardInfoHash[QString::number(info.userBaseInfo.ssid)] = info;
     }else {
         QString avatarPath;
         if (info.userBaseInfo.avatarPath.isEmpty() || info.userBaseInfo.avatarPath == "-1") {
-            avatarPath = ":/contact-page/rc-page/img/SS-default-icon.jpg";
+            avatarPath = ":/include/Image/Cirno.jpg";
         }else {
             avatarPath = info.userBaseInfo.avatarPath;
         }
         _groupModel->delGroupingItem(groupingName,{
-                                                       QString::number(info.groupBaseInfo.ssidGroup),info.groupBaseInfo.groupName,"离线",avatarPath
+                                                       QString::number(info.groupBaseInfo.ssidGroup),info.groupBaseInfo.groupName,info.content,avatarPath
                                                    });
         _groupModel->addGroupingItem(groupingName,{
-                                                       QString::number(info.groupBaseInfo.ssidGroup),info.groupBaseInfo.groupName,"离线",avatarPath
+                                                       QString::number(info.groupBaseInfo.ssidGroup),info.groupBaseInfo.groupName,info.content,avatarPath
                                                    });
         _groupingInfos["group"][groupingName].append(info);
         _ssidToCardInfoHash[QString::number(info.groupBaseInfo.ssidGroup)] = info;
@@ -274,14 +298,14 @@ void ContactPage::initConnectFunc() {
         if (index.parent().isValid()) {
             QString clickedSSID = index.data(ContactDelegate::SSIDRole).toString();
             if (clickedSSID.isEmpty()) return;
-            // emit sigTriggerAddMsgCard(_ssidToCardInfoHash.value(clickedSSID));
+            emit sigTriggerAddMsgCard(_ssidToCardInfoHash.value(clickedSSID));
         }
     });
     connect(_groupTree,&QTreeView::doubleClicked,[=](const QModelIndex &index) {
         if (index.parent().isValid()) {
             QString clickedSSID = index.data(ContactDelegate::SSIDRole).toString();
             if (clickedSSID.isEmpty()) return;
-            // emit sigTriggerAddMsgCard(_ssidToCardInfoHash.value(clickedSSID));
+            emit sigTriggerAddMsgCard(_ssidToCardInfoHash.value(clickedSSID));
         }
     });
 
@@ -293,7 +317,7 @@ void ContactPage::initConnectFunc() {
     });
 
     connect(this, &ContactPage::sigCommunicateRequestBySSID,this,[=](const QString& ssid) {
-        // emit sigTriggerAddMsgCard(_ssidToCardInfoHash.value(ssid));
+        emit sigTriggerAddMsgCard(_ssidToCardInfoHash.value(ssid));
     });
 
     connect(_friendModel, &ContactModel::sigUpdateFriendshipGrouping, this, &ContactPage::sigUpdateFriendshipGrouping);

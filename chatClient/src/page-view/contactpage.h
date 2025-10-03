@@ -27,9 +27,6 @@ class ElaTreeView;
 class QVBoxLayout;
 class ContactModel;
 
-// struct MsgCombineDTO;
-// struct FriendshipDTO;
-
 #define g_pContactPage ContactPage::getInstance()
 
 class ContactPage : public ElaScrollPage{
@@ -39,8 +36,6 @@ public:
     static void destroyContactPage();
 
     void addFriendGrouping(const QString& name);
-
-    // void addContactInfo(const QString& groupingName,const FriendshipData& info);
 
     QList<QString> getFriendGrouping();
     bool loadCacheContact(const QList<FriendshipData>& caches);
@@ -55,16 +50,19 @@ public slots:
     void addContactInfo(const QString& groupingName,const MsgCombineData &info);
 
 signals:
-    // void sigTriggerAddMsgCard(const MsgCombineDTO &info);
-    void sigTriggerAddToCreateGroupList(const UserBaseInfoDTO &dto);
+    //添加用户卡片信号
+    void sigTriggerAddMsgCard(const MsgCombineData &info);
+
+    //添加到创建群组列表
+    void sigTriggerAddToCreateGroupList(const UserBaseInfoData &dto);
 
     // update grouping
     void sigUpdateFriendshipGrouping(QString targetSSID,QString newGroupingName);
 
     void sigHideArchPageMaskEffect();
     void sigShowArchPageMaskEffect();
-    void sigAddMakeFriendRecord(const UserBaseInfoDTO& dto, NoticeStatus status);
-    void sigAddJoinGroupRecord(const GroupBaseInfoDTO& dto, NoticeStatus status);
+    void sigAddMakeFriendRecord(const UserBaseInfoData& dto, NoticeStatus status);
+    void sigAddJoinGroupRecord(const GroupBaseInfoData& dto, NoticeStatus status);
 
     // by user info display page
     void sigCommunicateRequestBySSID(const QString& ssid);

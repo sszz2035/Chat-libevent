@@ -4,6 +4,7 @@
 #include<QDateTime>
 #include "core/commondata.h"
 #include "page-view/contactpage.h"
+#include"page-view/messagepage.h"
 #include"utils/log/logfile.h"
 #include"page-view/archpage.h"
 static std::mutex m;
@@ -56,6 +57,32 @@ void ClientRequestHandler::queryUserInfoByUid(const qint32 &uid, QueryCallback c
     SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Sending request: " + requestId + " for uid: " + QString::number(uid));
     ClientConServer::getInstance()->clinet_write_data(send_data);
     
+    // 启动超时检查
+    if (!m_timeoutTimer.isActive()) {
+        m_timeoutTimer.start(5000); // 5秒超时检查
+        SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Started timeout check timer");
+    }
+}
+
+void ClientRequestHandler::queryGroupInfoByGid(const qint32 &gid, QueryCallback callback)
+{
+    QString requestId = generateRequestId();
+
+    // 存储回调函数
+    {
+        std::lock_guard<std::mutex> lock(m_requestsMutex);
+        m_pendingRequests[requestId] = callback;
+    }
+
+    // 发送请求数据
+    QJsonObject send_data;
+    send_data["cmd"] = "query_by_gid";
+    send_data["gid"] = gid;
+    send_data["request_id"] = requestId;
+
+    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Sending request: " + requestId + " for gid: " + QString::number(gid));
+    ClientConServer::getInstance()->clinet_write_data(send_data);
+
     // 启动超时检查
     if (!m_timeoutTimer.isActive()) {
         m_timeoutTimer.start(5000); // 5秒超时检查
@@ -136,6 +163,54 @@ void ClientRequestHandler::client_reply_info()
         info.userBaseInfo.ssid=obj["uid"].toInt();
         info.userBaseInfo.username=obj["username"].toString();
         ContactPage::getInstance()->addContactInfo("我的好友",info);
+    }
+
+    //被私聊
+    else if(obj.value("cmd").toString()=="private")
+    {
+        MessageContentData content;
+        content.contentType=ContentType::Text;
+        content.content=obj["text"].toString();
+        content.senderSSID=obj["fromfriend"].toInt();
+        content.createTime=1;
+        content.recipient.recipientType=1;
+        content.recipient.recipientSSID=obj["tofriend"].toInt();
+        MessagePage::getInstance()->loadCacheMsg({content});
+    }
+
+    //查询群信息回复
+    else if(obj.value("cmd").toString()=="query_gid_reply")
+    {
+        //执行回调函数
+        if(callback)
+        {
+            callback(obj);
+        }
+        else {
+            SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Received response for unknown request: " + requestId);
+        }
+    }
+
+    //创建群回复
+    else if(obj.value("cmd").toString()=="creategroup_reply")
+    {
+        //插入联系人界面
+        QString groupingName="我加入的群聊";
+        FriendshipData data;
+        // data.groupBaseInfo.groupName=obj["groupname"].toString();
+        // data.groupBaseInfo.ssidGroup=obj["gid"].toInt();
+        // data.groupBaseInfo.createSSID=obj["createSSID"].toInt();
+        QString groupMember=obj["groupmember"].toString();
+        data.ssid=CommonData::getInstance()->getCurUserInfo().ssid;
+        data.groupingName=groupingName;
+        data.friendType=2;
+        data.friendName=obj["groupname"].toString();
+        data.friendSSID=obj["gid"].toInt();
+        data.groupingName=groupingName;
+        data.status=groupMember;
+        ContactPage::getInstance()->loadCacheContact({data});
+        //创建群聊卡片
+
     }
 
     //如果没有待处理请求 停止计时器
@@ -226,6 +301,42 @@ void ClientRequestHandler::sendMessageContentHandler(const QList<MessageContentD
     }
 }
 
+void ClientRequestHandler::createGroupRequestHandler(const QList<int> &data)
+{
+    QString requestId=generateRequestId();
+    //将请求ID插入任务队列中
+    {
+        std::lock_guard<std::mutex>lock(m_requestsMutex);
+        m_pendingRequests.insert(requestId,{});
+    }
+
+    QJsonObject obj;
+    //对成员进行序列化
+    QString memberlist;
+    qint32 ownerSSID=CommonData::getInstance()->getCurUserInfo().ssid;
+    QString ownerName=CommonData::getInstance()->getCurUserInfo().username;
+    if(data.size()==1)  memberlist=QString::number(data[0]);
+    else
+    {
+        for(auto member:data)
+        {
+            memberlist.append(QString::number(member));
+            memberlist.append("|");
+        }
+        memberlist.removeAt(memberlist.size()-1);
+    }
+    obj.insert("cmd","creategroup");
+    obj.insert("request_id",requestId);
+    obj.insert("group_member",memberlist);
+    obj.insert("owner",ownerSSID);
+    obj.insert("ownername",ownerName);
+    ClientConServer::getInstance()->clinet_write_data(obj);
+    if(!m_timeoutTimer.isActive())
+    {
+        m_timeoutTimer.start(5000);
+    }
+}
+
 ClientRequestHandler::ClientRequestHandler()
 {
     // 设置超时定时器
@@ -235,6 +346,8 @@ ClientRequestHandler::ClientRequestHandler()
     connect(this,&ClientRequestHandler::queryFuzzySearchRequest,this,&ClientRequestHandler::queryFuzzySearchRequsetHandler);
 
     connect(CommonData::getInstance(),&CommonData::sigMsgContentData,this,&ClientRequestHandler::sendMessageContentHandler);
+
+    connect(CommonData::getInstance(),&CommonData::sigCreateGroupRequest,this,&ClientRequestHandler::createGroupRequestHandler);
 }
 
 ClientRequestHandler::~ClientRequestHandler()

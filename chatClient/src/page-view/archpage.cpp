@@ -103,27 +103,40 @@ void ArchPage::destroyInstance() {
         }
     }
     //处理群组数据
-    // for(const QString& groupId:groupList)
-    // {
-    //     int groupssid=groupId.toInt();
-    //     if(groupssid>0)
-    //     {
-    //         FriendshipData groupData;
-    //         groupData.ssid=userInfo->_ssid;
-    //         groupData.friendSSID=groupssid;
-    //         groupData.friendType=2;
-    //         groupData.groupingName="我加入的群聊";
-    //         ClientRequestHandler::getInstance()->queryUserInfoByUid(groupssid,[&groupData](const QJsonObject&obj)
-    //         {
-    //             groupData.friendName=obj["groupname"].toString();
-    //         });
-    // cache.push_back(groupData);
-    //     }
-    //     else
-    //     {
-    //         qDebug()<<"Invaild group ID format:"<<groupId;
-    //     }
-    // }
+    for(const QString& groupId:groupList)
+    {
+        int groupssid=groupId.toInt();
+        if(groupssid>0)
+        {
+            FriendshipData groupData;
+            groupData.ssid=groupId.toInt();
+            groupData.friendSSID=groupssid;
+            groupData.friendType=2;
+            groupData.groupingName="我加入的群聊";
+            // 使用值捕获和索引来安全地更新数据
+            int index = cache.size();
+            cache.push_back(groupData);
+            pendingCallbacks++;
+
+            ClientRequestHandler::getInstance()->queryGroupInfoByGid(groupssid,[this, index](const QJsonObject &obj)
+            {
+                if (index >= 0 && index < cache.size()) {
+                    // 安全地更新缓存中的数据
+                    cache[index].friendName = obj["groupname"].toString();
+                    cache[index].status=obj["groupmember"].toString();
+                }
+                pendingCallbacks--;
+                if (pendingCallbacks == 0) {
+                    // 所有回调都完成了，发出信号
+                    emit cacheUpdated();
+                }
+            });
+        }
+        else
+        {
+            qDebug()<<"Invaild group ID format:"<<groupId;
+        }
+    }
 }
 
 //更新用户卡片
@@ -364,11 +377,11 @@ void ArchPage::initConnectFunc() {
 
     connect(this,&ArchPage::sigJumpOtherPageRequest,this,[=](PageName pageName) {
         switch (pageName) {
-        case MessagePage:
+        case PageName::MessagePage:
             //根据pagekey跳转到不同的界面
             navigation(g_pMessagePage->property("ElaPageKey").toString());
             break;
-        case ContactPage:
+        case PageName::ContactPage:
             navigation(g_pContactPage->property("ElaPageKey").toString());
             break;
     //     case LLMPage:
@@ -389,10 +402,10 @@ void ArchPage::initConnectFunc() {
     // 连接缓存更新信号
     connect(this, &ArchPage::cacheUpdated, this, [this]() {
         SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Cache updated, size: " + QString::number(cache.size()));
-        for(auto f:cache)
-        {
-           SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "好友信息: " + f.friendName + " " + QString::number(f.friendSSID) + " " + QString::number(f.friendType) + " " + QString::number(f.ssid) + " " + f.status);
-        }
+        // for(auto f:cache)
+        // {
+        //    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "好友信息: " + f.friendName + " " + QString::number(f.friendSSID) + " " + QString::number(f.friendType) + " " + QString::number(f.ssid) + " " + f.status);
+        // }
         ContactPage::getInstance()->loadCacheContact(cache);
     });
 }

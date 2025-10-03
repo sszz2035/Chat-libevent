@@ -16,7 +16,10 @@ private:
     explicit CommonData();
     ~CommonData();
 signals:
+    //在clientrequesthandler中被处理
     void sigMsgContentData(const QList<MessageContentData>& data);
+    void sigCreateGroupRequest(const QList<int>& data);
+
 private:
     UserBaseInfoData _userinfo;
     static CommonData * instance;

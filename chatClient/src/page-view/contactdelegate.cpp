@@ -152,7 +152,7 @@ void ContactDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
         painter->setRenderHint(QPainter::Antialiasing);
         painter->setBrush(QColor(33, 228, 137));
         painter->setPen(Qt::NoPen);
-        QRect circleRect(usernameRect.right() - 10, usernameRect.center().y() - 5, 10, 10);
+        QRect circleRect(avatarRect.right() - 10, avatarRect.bottomRight().y()-45, 13, 13);
         painter->drawEllipse(circleRect);
     }
 

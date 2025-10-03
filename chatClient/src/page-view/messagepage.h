@@ -25,6 +25,7 @@ class ConversationPage;
 class ElaInteractiveCard;
 class ElaScrollPage;
 class ElaTabWidget;
+class ArchPage;
 class ElaDockWidget;
 class QVBoxLayout;
 
@@ -38,9 +39,9 @@ public:
     static MessagePage * getInstance();
     static void destroyMessagePage();
 
-    // bool loadCacheMsg(QList<MessageContentDTO> caches);
+    bool loadCacheMsg(QList<MessageContentData> caches);
 signals:
-    void sigClickedSSIDCardRequest(const QString& ssid);
+    void sigClickedSSIDCardRequest(const qint32& ssid);
 public slots:
     // only process card ui logic , don't include interaction with conversation page
     void addMsgCard(const MsgCombineData& info);
@@ -48,7 +49,7 @@ private:
     explicit MessagePage(QWidget *parent = nullptr);
     ~MessagePage() override;
 
-    // void addMsgContent(const MessageContentDTO& content);
+    void addMsgContent(const MessageContentData& content);
 protected:
     void initConnectFunc();
     void initWindow();
@@ -63,11 +64,11 @@ private:
     // ----------------- UI -----------------
 
     // --------------- BackEnd --------------
-    QMap<ElaInteractiveCard*,MsgCombineData>      _tmpUserMsgList;
-    QHash<qint32,int>                           _unreadMsgCount;
-    QHash<ElaInteractiveCard*,ConversationPage*> _cardLinkPageHash;
-    QHash<qint32,ElaInteractiveCard*>           _ssidLinkCardHash;
-    QHash<qint32,int>                           _tabSSIDLinkIndex;
+    QMap<ElaInteractiveCard*,MsgCombineData>      _tmpUserMsgList;//卡片对应用户信息容器
+    QHash<qint32,int>                           _unreadMsgCount;//统计未读消息数目容器
+    QHash<ElaInteractiveCard*,ConversationPage*> _cardLinkPageHash;//卡片对应页面容器
+    QHash<qint32,ElaInteractiveCard*>           _ssidLinkCardHash;//用户id对应卡片容器
+    QHash<qint32,int>                           _tabSSIDLinkIndex;//用户id对应导航栏序号
     // --------------- BackEnd --------------
     static MessagePage* _messagePage;
 };

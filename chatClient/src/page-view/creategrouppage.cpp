@@ -18,6 +18,8 @@
 #include <QListWidget>
 #include <QStandardItemModel>
 #include <QPainter>
+#include "core/pagedata.h"
+#include"core/commondata.h"
 // #include <common-data/CommonData.h>
 // #include <common-data/common-dto/CommonDatabaseDTO.h>
 
@@ -56,26 +58,46 @@ void CreateGroupPage::sltHideLoading() {
     sltHideMaskEffect();
 }
 
-// void CreateGroupPage::sltAddToCreateGroupList(const UserBaseInfoDTO &dto) {
-//     if (!_selectedList->isVisible()) _selectedList->show();
-//     if (!_toAddUserHash.contains(dto.ssid)) {
-//         QString userName = dto.username + " (" + dto.ssid + ")";
-//         QStandardItem * newItem = new QStandardItem(userName);
+void CreateGroupPage::sltAddToCreateGroupList(const UserBaseInfoData &dto) {
 
-//         QString userAvatar;
-//         if (dto.avatarPath.isEmpty() || dto.avatarPath == "-1")
-//             userAvatar = ":/arch-page/rc-page/img/SS-default-icon.jpg";
-//         else
-//             userAvatar = dto.avatarPath;
-//         QPixmap pixmap(userAvatar);
-//         pixmap = pixmap.scaled(32, 32, Qt::KeepAspectRatio);
+    if (!_selectedList->isVisible()) _selectedList->show();
+    QString userName = dto.username + " (" + QString::number(dto.ssid) + ")";
 
-//         newItem->setIcon(QIcon(pixmap));
+    UserBaseInfoData info=CommonData::getInstance()->getCurUserInfo();
+    QString username = info.username + " (" + QString::number(info.ssid) + ")";
+    if(username==userName)  return;
 
-//         _dataModel->appendRow(newItem);
-//         _toAddUserHash.insert(dto.ssid,dto);
-//     }
-// }
+    if (!_toAddUserHash.contains(dto.ssid)) {
+        QStandardItem * newItem = new QStandardItem(userName);
+        newItem->setEditable(false);
+        QString userAvatar;
+        if (dto.avatarPath.isEmpty() || dto.avatarPath == "-1")
+            userAvatar = ":/include/Image/Cirno.jpg";
+        else
+        userAvatar = dto.avatarPath;
+        QPixmap pixmap(userAvatar);
+        pixmap = pixmap.scaled(32, 32, Qt::KeepAspectRatio);
+
+        newItem->setIcon(QIcon(pixmap));
+
+        _dataModel->appendRow(newItem);
+        _toAddUserHash.insert(dto.ssid,dto);
+    }
+    else
+    {
+        for(int row=0;row<_dataModel->rowCount();row++)
+        {
+           QStandardItem* item= _dataModel->item(row);
+           if(item->data(Qt::DisplayRole).toString()==userName)
+           {
+               _dataModel->removeRow(row);
+               break;
+           }
+        }
+        auto it=_toAddUserHash.find(dto.ssid);
+        _toAddUserHash.erase(it);
+    }
+}
 
 void CreateGroupPage::initWindow() {
     resize(500,600);
@@ -120,8 +142,8 @@ void CreateGroupPage::initEdgeLayout() {
     _selectedLayout->addWidget(_selectedList);
     _selectedLayout->setContentsMargins(0,0,0,10);
 
-    _mainLayout->addItem(closeLayout);
-    _mainLayout->addItem(_selectedLayout);
+    _mainLayout->addLayout(closeLayout);
+    _mainLayout->addLayout(_selectedLayout);
     _mainLayout->addLayout(_buttonLayout);
     _mainLayout->setContentsMargins(0,0,0,0);
 
@@ -147,13 +169,25 @@ void CreateGroupPage::initContent() {
     _maskWidget->setFixedSize(this->size());
 
     _selectedList->setModel(_dataModel);
+    _selectedList->show();
+    UserBaseInfoData info=CommonData::getInstance()->getCurUserInfo();
+    QString userName = info.username + " (" + QString::number(info.ssid) + ")";
+
+    QStandardItem* newItem=new QStandardItem(userName);
+    newItem->setEditable(false);
+    QString userAvatar=":/include/Image/Cirno.jpg";
+    QPixmap pixmap(userAvatar);
+    pixmap = pixmap.scaled(32, 32, Qt::KeepAspectRatio);
+    newItem->setIcon(QIcon(pixmap));
+    _dataModel->appendRow(newItem);
+    _toAddUserHash.insert(info.ssid,info);
 }
 
 void CreateGroupPage::initConnectFunc() {
     // 关闭
     connect(_closeBtn,&ElaToolButton::clicked,[=]() {
         _dataModel->clear();
-        // _toAddUserHash.clear();
+        _toAddUserHash.clear();
         emit sigHideArchPageMaskEffect();
         this->hide();
     });
@@ -161,14 +195,14 @@ void CreateGroupPage::initConnectFunc() {
     // confirm
     connect(_confirmBtn,&ElaToolButton::clicked,[=]() {
         emit sigHideArchPageMaskEffect();
-        // emit g_pCommonData->sigCreateGroupRequest(_toAddUserHash.keys());
+        emit CommonData::getInstance()->sigCreateGroupRequest(_toAddUserHash.keys());
         _dataModel->clear();
-        // _toAddUserHash.clear();
+        _toAddUserHash.clear();
         this->hide();
     });
 
     // bind contact signal
-    // connect(g_pContactPage,&ContactPage::sigTriggerAddToCreateGroupList, this, &CreateGroupPage::sltAddToCreateGroupList);
+    connect(g_pContactPage,&ContactPage::sigTriggerAddToCreateGroupList, this, &CreateGroupPage::sltAddToCreateGroupList);
 
     // 搜索
     // connect(_search,&ElaSuggestBox::sigEnterPressed,[=](const QString& content) {
@@ -193,8 +227,8 @@ void CreateGroupPage::paintEvent(QPaintEvent *event) {
     painter.drawRoundedRect(rect(), 20, 20);
 
     // 绘制按钮栏背景
-    // painter.setBrush(ElaThemeColor(eTheme->getThemeMode(), DialogLayoutArea));
-    // painter.drawRoundedRect(QRectF(0, height() - 60, width(), 60), 8, 8);
+    painter.setBrush(ElaThemeColor(eTheme->getThemeMode(), DialogLayoutArea));
+    painter.drawRoundedRect(QRectF(0, height() - 60, width(), 60), 8, 8);
 
     QWidget::paintEvent(event);
 }

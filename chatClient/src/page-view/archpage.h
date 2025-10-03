@@ -26,7 +26,7 @@ class LoadingDialog;
 
 // #include "help.h"
 
-enum PageName {
+enum class PageName {
     MessagePage,
     ContactPage,
     LLMPage,
