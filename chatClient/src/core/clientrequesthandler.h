@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <functional>
 #include <mutex>
+#include<vector>
 #include "utils/net-work/clientconserver.h"
 #include"page-view/landpage.h"
 #include"page-view/addpage.h"
@@ -24,13 +25,18 @@ public:
 
     void queryGroupInfoByGid(const qint32& gid,QueryCallback callback);
 
+    // 批量查询用户信息
+    void queryUserInfoBatch(const std::vector<qint32>&uids,QueryCallback callback);
+
 signals:
     void userInfoReceived(const QJsonObject& userInfo);
     //模糊搜索请求
     void queryFuzzySearchRequest(const QString& content,bool isGroup,QueryCallback callback);
     //好友申请结果回复
     void addFriendResponse(const QJsonObject& obj);
-
+    void addGroupResponse(const QJsonObject& obj);
+    //新用户加入群回复
+    void newMemberJoinResponse(const QJsonObject& obj);
 public slots:
     void client_reply_info();
     void queryFuzzySearchRequsetHandler(const QString& content,bool isGroup,QueryCallback callback);

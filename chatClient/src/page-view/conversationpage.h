@@ -130,8 +130,8 @@ class ConversationGroupPage : public QWidget{
     Q_OBJECT
 public:
     explicit ConversationGroupPage(
-        // const GroupBaseInfoDTO& groupBaseInfo,
-        // const QList<GroupMemberInfoDTO>& groupMemberInfo,
+        const GroupBaseInfoData& groupBaseInfo,
+        const QList<GroupMemberInfoData>& groupMemberInfo,
         QWidget * parent = nullptr
         );
     ~ConversationGroupPage() override;

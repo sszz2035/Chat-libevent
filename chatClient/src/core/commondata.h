@@ -12,6 +12,7 @@ public:
     UserBaseInfoData getCurUserInfo()const;
     void             setCurUserInfo(const UserBaseInfoData& curUserInfo);
     bool             setMessageContentData(const QList<MessageContentData>& data,bool isFromRemote=false);
+
 private:
     explicit CommonData();
     ~CommonData();

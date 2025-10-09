@@ -34,7 +34,7 @@ signals:
     void sigAddBtnClicked(const qint32& ssid, bool isGroup);
 public slots:
     void sltAddUserRes(const UserBaseInfoData& dto);
-    // void sltAddGroupRes(const GroupBaseInfoDTO& dto);
+    void sltAddGroupRes(const GroupBaseInfoData& dto);
 
     void sltShowMaskEffect();
     void sltHideMaskEffect();

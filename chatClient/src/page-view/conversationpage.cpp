@@ -39,6 +39,8 @@
 #include <QTimer>
 #include <mutex>
 
+#include <core/clientrequesthandler.h>
+
 SSTextEdit::SSTextEdit(QWidget *parent): QTextEdit(parent) {
     setAcceptDrops(true);
 }
@@ -409,31 +411,31 @@ void ConversationFriendPage::initConnectFunc() {
 }
 
 ConversationGroupPage::ConversationGroupPage(
-//     const GroupBaseInfoDTO& groupBaseInfo,
-//     const QList<GroupMemberInfoDTO>& groupMemberInfo,
+    const GroupBaseInfoData& groupBaseInfo,
+    const QList<GroupMemberInfoData>& groupMemberInfo,
     QWidget *parent
     )
     : QWidget(parent)
 {
-//     _groupBaseInfo = groupBaseInfo;
-//     _groupMemberInfo = groupMemberInfo;
+    _groupBaseInfo = groupBaseInfo;
+    _groupMemberInfo = groupMemberInfo;
 
-//     QString curUserSSID = g_pCommonData->getCurUserInfo().ssid;
-//     _curType = Group_Member;
-//     if (groupBaseInfo.admins.contains(curUserSSID)) {
+    qint32 curUserSSID = CommonData::getInstance()->getCurUserInfo().ssid;
+    _curType = Group_Member;
+    // if (groupBaseInfo.admins.contains(curUserSSID)) {
 //         _curType = Group_OP;
 //     }
-//     if (groupBaseInfo.createSSID == curUserSSID) {
-//         _curType = Group_Creater;
-//     }
+    if (groupBaseInfo.createSSID == curUserSSID) {
+        _curType = Group_Creater;
+    }
 
-//     initWindow();
+    initWindow();
 
-//     initEdgeLayout();
+    initEdgeLayout();
 
-//     initContent();
+    initContent();
 
-//     initConnectFunc();
+    initConnectFunc();
 }
 
 ConversationGroupPage::~ConversationGroupPage(){}
@@ -505,8 +507,8 @@ void ConversationGroupPage::initEdgeLayout() {
 void ConversationGroupPage::initContent() {
     // tool button settings
 //只注释了下面两行
-//_groupNameButton->setText(_groupBaseInfo.groupName);
-//_groupNameButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    _groupNameButton->setText(_groupBaseInfo.groupName);
+    _groupNameButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
     // _callButton->setElaIcon(ElaIconType::CirclePhone);
     // _callButton->setIconSize(QSize(32,32));
     // _callButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
@@ -568,7 +570,6 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
     _layout->setSpacing(0);
     qint32 _curSSID = CommonData::getInstance()->getCurUserInfo().ssid;
     QString _curName = CommonData::getInstance()->getCurUserInfo().username;
-    qDebug()<<_curSSID<<_curName;
     if(type == ConversationType::Friend){
         _cfP = new ConversationFriendPage(
             dto.userBaseInfo,this
@@ -630,33 +631,40 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
             CommonData::getInstance()->setMessageContentData({msgDto});
         });
     }
-//     else if(type == ConversationType::Group){
-//         _cgP = new ConversationGroupPage(
-//             dto.groupBaseInfo,
-//             dto.groupMemberInfo,
-//             this
-//             );
-//         auto * listAndInputLayout = new QHBoxLayout;
-//         listAndInputLayout->setContentsMargins(0,0,0,0);
-//         listAndInputLayout->setSpacing(0);
+    else if(type == ConversationType::Group){
+        _cgP = new ConversationGroupPage(
+            dto.groupBaseInfo,
+            dto.groupMemberInfo,
+            this
+            );
+        auto * listAndInputLayout = new QHBoxLayout;
+        listAndInputLayout->setContentsMargins(0,0,0,0);
+        listAndInputLayout->setSpacing(0);
 
 //         // group member list dock
-//         _memberOfGroupList = new GroupMemberDock(this);
-//         _memberOfGroupList->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
-//         _memberOfGroupList->setFixedWidth(120);
-//         _memberOfGroupList->setMaximumHeight(_inputWid->height());
+        _memberOfGroupList = new GroupMemberDock(this);
+        _memberOfGroupList->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
+        _memberOfGroupList->setFixedWidth(120);
+        _memberOfGroupList->setMaximumHeight(_inputWid->height());
 
 //         // TODO: mark
-//         QHash<QString,UserBaseInfoDTO> tmpUserHash;
-//         for (const auto &it : dto.groupMemberInfo ) {
-//             UserBaseInfoDTO user = g_pCommonData->getUserInfoBySSID(it.ssidMember);
-//             if (user.avatarPath == "-1" || user.avatarPath.isEmpty()) {
-//                 user.avatarPath = ":/message-page/rc-page/img/SS-default-icon.jpg";
-//             }
+        QHash<QString,UserBaseInfoData> tmpUserHash;
+        // for (const auto &it : dto.groupMemberInfo ) {
+        //     UserBaseInfoData user = g_pCommonData->getUserInfoBySSID(it.ssidMember);
+        //     if (user.avatarPath == "-1" || user.avatarPath.isEmpty()) {
+        //         user.avatarPath = ":/message-page/rc-page/img/SS-default-icon.jpg";
+        //     }
 //             _memberOfGroupList->addMember(user.avatarPath, user.ssid, user.username );
 //             tmpUserHash.insert(it.ssidMember,user);
-//         }
+        // }
 
+        std::vector<qint32>uids;
+        for(const auto& it:dto.groupMemberInfo)
+        {
+            uids.push_back(it.ssidMember);
+        }
+        ClientRequestHandler::getInstance()->queryUserInfoBatch(uids,[this](const QJsonObject& obj){
+        });
 //         _memberOfGroupList->setObjectName(QString::fromUtf8("_memberOfGroupList"));
 //         _memberOfGroupList->setStyleSheet("#_memberOfGroupList {background-color: rgb(242, 242, 242);}");
 
@@ -742,7 +750,7 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
 //             // sync with server
 //             g_pCommonData->setMessageContentData({msgDto});
 //         });
-//     }
+    }
     this->setLayout(_layout);
     this->setObjectName("ConversationPage");
     this->setStyleSheet("#ConversationPage{background-color: rgb(242, 242, 242);border-bottom-left-radius: 30px;border-top-right-radius: 30px;}");

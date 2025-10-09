@@ -98,11 +98,12 @@ bool MessagePage::loadCacheMsg(QList<MessageContentData> caches) {
                 return false;
             }
         }
-    // else {
-    //         // get group ssid base info
-    //         GroupBaseInfoDTO   gBaseInfo;
-    //         QList<GroupMemberInfoDTO> gMemberInfos;
-    //         if (it.senderSSID == g_pCommonData->getCurUserInfo().ssid) {
+    else {
+        // get group ssid base info
+
+            GroupBaseInfoData   gBaseInfo;
+            QList<GroupMemberInfoData> gMemberInfos;
+            // if (it.senderSSID == CommonData::getInstance()->getCurUserInfo().ssid) {
     //             gBaseInfo    = g_pCommonData->getGroupInfoDataBySSID(it.recipient.recipientSSID);
     //             gMemberInfos = g_pCommonData->getGroupMemberInfoData(it.recipient.recipientSSID, 100, 1);
     //         }else {
@@ -124,7 +125,7 @@ bool MessagePage::loadCacheMsg(QList<MessageContentData> caches) {
     //             });
     //             return false;
     //         }
-    //     }
+        }
     }
     return true;
 }
@@ -243,48 +244,48 @@ void MessagePage::addMsgCard(const MsgCombineData &info) {
                                                                           GetCurTime::getTimeObj()->getMsgTypeTime(static_cast<std::time_t>(info.timestamp))),Qt::gray,font);
         }
     }
-        // else {
-//         if (!_ssidLinkCardHash.contains(info.groupBaseInfo.ssidGroup)) { // 没有添加
-//             ElaInteractiveCard * user = new ElaInteractiveCard(this);
-//             user->setTitle(info.groupBaseInfo.groupName);
-//             user->setSubTitle(info.content);
-//             user->setCardPixmap(QPixmap(avatarPath));
-//             user->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-//             user->setFixedWidth(245);
-//             user->setFixedHeight(60);
-//             user->setCardPixmapSize(50,50);
+        else {
+        if (!_ssidLinkCardHash.contains(info.groupBaseInfo.ssidGroup)) { // 没有添加
+            ElaInteractiveCard * user = new ElaInteractiveCard(this);
+            user->setTitle(info.groupBaseInfo.groupName);
+            user->setSubTitle(info.content);
+            user->setCardPixmap(QPixmap(avatarPath));
+            user->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+            user->setFixedWidth(245);
+            user->setFixedHeight(60);
+            user->setCardPixmapSize(50,50);
 
-//             _tempMsgWidLayout->insertWidget(_tempMsgWidLayout->count()-1,user);
-//             _tmpUserMsgList[user] = info;
-//             _ssidLinkCardHash[info.groupBaseInfo.ssidGroup] = user;
+            _tempMsgWidLayout->insertWidget(_tempMsgWidLayout->count()-1,user);
+            _tmpUserMsgList[user] = info;
+            _ssidLinkCardHash[info.groupBaseInfo.ssidGroup] = user;
 
-//             auto cP = new ConversationPage(Group, info, _conversionWid);
-//             cP->hide();
-//             _cardLinkPageHash[user] = cP;
+            auto cP = new ConversationPage(Group, info, _conversionWid);
+            cP->hide();
+            _cardLinkPageHash[user] = cP;
 
-//             connect(user,&ElaInteractiveCard::clicked,this,[=]() {
-//                 _unreadMsgCount[info.groupBaseInfo.ssidGroup] = 0;
-//                 user->changeStatus(true);
-//                 user->show();
-//                 cP->scrollMsgViewToBottom();
-//                 if (_tabSSIDLinkIndex.contains(info.userBaseInfo.ssid)) {
-//                     _conversionWid->setCurrentIndex(_tabSSIDLinkIndex.value(info.userBaseInfo.ssid));
-//                 }else {
-//                     int idx = _conversionWid->addTab(_cardLinkPageHash[user],QPixmap(avatarPath),info.groupBaseInfo.groupName);
-//                     _tabSSIDLinkIndex.insert(info.userBaseInfo.ssid,idx);
-//                     _conversionWid->setCurrentIndex(idx);
-//                 }
-//             });
-//         }
-//         if (info.timestamp > 0) { // new msg come in
-//             int unreadCount = ++_unreadMsgCount[info.groupBaseInfo.ssidGroup];
-//             _ssidLinkCardHash[info.groupBaseInfo.ssidGroup]->setStatusContent((unreadCount>99?"99+":QString::number(unreadCount)),font,40);
-//             _ssidLinkCardHash[info.groupBaseInfo.ssidGroup]->setSubTitle(ComFunc::truncateWithEllipsis(info.groupBaseInfo.groupName + "：" + info.content));
-//             _ssidLinkCardHash[info.groupBaseInfo.ssidGroup]->setTimeContent(QString::fromStdString(
-//                                                                                 GetCurTime::getTimeObj()->getMsgTypeTime(static_cast<std::time_t>(info.timestamp))),Qt::gray,font
-//                                                                             );
-//         }
-//     }
+            connect(user,&ElaInteractiveCard::clicked,this,[=]() {
+                _unreadMsgCount[info.groupBaseInfo.ssidGroup] = 0;
+                user->changeStatus(true);
+                user->show();
+                cP->scrollMsgViewToBottom();
+                if (_tabSSIDLinkIndex.contains(info.userBaseInfo.ssid)) {
+                    _conversionWid->setCurrentIndex(_tabSSIDLinkIndex.value(info.userBaseInfo.ssid));
+                }else {
+                    int idx = _conversionWid->addTab(_cardLinkPageHash[user],QPixmap(avatarPath),info.groupBaseInfo.groupName);
+                    _tabSSIDLinkIndex.insert(info.userBaseInfo.ssid,idx);
+                    _conversionWid->setCurrentIndex(idx);
+                }
+            });
+        }
+        if (info.timestamp > 0) { // new msg come in
+            int unreadCount = ++_unreadMsgCount[info.groupBaseInfo.ssidGroup];
+            _ssidLinkCardHash[info.groupBaseInfo.ssidGroup]->setStatusContent((unreadCount>99?"99+":QString::number(unreadCount)),font,40);
+            _ssidLinkCardHash[info.groupBaseInfo.ssidGroup]->setSubTitle(info.groupBaseInfo.groupName + "：" + info.content);
+            _ssidLinkCardHash[info.groupBaseInfo.ssidGroup]->setTimeContent(QString::fromStdString(
+                                                                                GetCurTime::getTimeObj()->getMsgTypeTime(static_cast<std::time_t>(info.timestamp))),Qt::gray,font
+                                                                            );
+        }
+    }
 }
 
 
@@ -314,6 +315,18 @@ MessagePage::MessagePage(QWidget *parent) : QWidget(parent) {
     content2.recipient.recipientSSID=96903936;
     content2.recipient.recipientType=1;
     loadCacheMsg({content2});
+
+    MsgCombineData data;
+    data.content="擦";
+    data.groupBaseInfo.groupName="所说咋咋";
+    data.groupBaseInfo.ssidGroup=213456;
+    data.groupBaseInfo.createSSID=2035797167;
+    GroupMemberInfoData dd;
+    dd.ssidGroup=213456;
+    dd.ssidMember=2035797167;
+    data.groupMemberInfo.append(dd);
+    data.isGroup=true;
+    addMsgCard(data);
 }
 MessagePage::~MessagePage() {
 

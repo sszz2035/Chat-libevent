@@ -2,6 +2,7 @@
 #include<mutex>
 #include<QRandomGenerator>
 #include<QDateTime>
+#include <QJsonArray>
 #include "core/commondata.h"
 #include "page-view/contactpage.h"
 #include"page-view/messagepage.h"
@@ -90,6 +91,33 @@ void ClientRequestHandler::queryGroupInfoByGid(const qint32 &gid, QueryCallback 
     }
 }
 
+void ClientRequestHandler::queryUserInfoBatch(const std::vector<qint32> &uids, QueryCallback callback)
+{
+    QString requestId = generateRequestId();
+    // 存储回调函数
+    {
+        std::lock_guard<std::mutex> lock(m_requestsMutex);
+        m_pendingRequests[requestId] = callback;
+    }
+
+    QJsonArray queryArray;
+    for(const qint32 val:uids)
+    {
+        queryArray.append(val);
+    }
+    QJsonObject sendData;
+    sendData["cmd"]="query_users_batch";
+    sendData["uids"]=queryArray;
+    sendData["request_id"]=requestId;
+    ClientConServer::getInstance()->clinet_write_data(sendData);
+
+    // 启动超时检查
+    if (!m_timeoutTimer.isActive()) {
+        m_timeoutTimer.start(5000); // 5秒超时检查
+        SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Started timeout check timer");
+    }
+}
+
 void ClientRequestHandler::client_reply_info()
 {
     QByteArray ba;
@@ -151,7 +179,7 @@ void ClientRequestHandler::client_reply_info()
     //添加好友回复
     else if(obj.value("cmd").toString()=="addfriend_reply")
     {
-        //发送回复，在好友界面里进行处理数据
+        //发送回复，在添加好友界面里进行处理数据
         emit addFriendResponse(obj);
     }
 
@@ -210,18 +238,43 @@ void ClientRequestHandler::client_reply_info()
         data.status=groupMember;
         ContactPage::getInstance()->loadCacheContact({data});
         //创建群聊卡片
+    }
 
+    //加入群回复
+    else if(obj.value("cmd").toString()=="joingroup_reply")
+    {
+        //发送回复，在添加群组界面里进行处理数据
+        emit addGroupResponse(obj);
+    }
+
+    //有新成员加入群回复
+    else if(obj.value("cmd").toString()=="new_member_join")
+    {
+        emit newMemberJoinResponse(obj);
+    }
+
+    //批量查询回复
+    else if(obj.value("cmd").toString()=="query_users_batch_reply")
+    {
+        //执行回调函数
+        if(callback)
+        {
+            callback(obj);
+        }
+        else {
+            SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Received response for unknown request: " + requestId);
+        }
     }
 
     //如果没有待处理请求 停止计时器
     {
         std::lock_guard<std::mutex> lock(m_requestsMutex);
-
         if(m_pendingRequests.isEmpty())
         {
             m_timeoutTimer.stop();
         }
     }
+
 }
 
 void ClientRequestHandler::queryFuzzySearchRequsetHandler(const QString &content, bool isGroup, QueryCallback callback)
@@ -255,16 +308,28 @@ void ClientRequestHandler::addFriendRequestHandler(const qint32 &ssid, bool isGr
 
     //将请求ID插入任务队列中
     {
-        std::lock_guard<std::mutex> lock(m_requestsMutex);
+        std::lock_guard<std::mutex>lock(m_requestsMutex);
         m_pendingRequests.insert(requestId,{});
     }
+    if(!isGroup)
+    {
+        QJsonObject send_data;
+        send_data["cmd"]="addfriend";
+        send_data["uid"]=CommonData::getInstance()->getCurUserInfo().ssid;
+        send_data["friend_uid"]=ssid;
+        send_data["request_id"]=requestId;
+        ClientConServer::getInstance()->clinet_write_data(send_data);
+    }
 
-    QJsonObject send_data;
-    send_data["cmd"]="addfriend";
-    send_data["uid"]=CommonData::getInstance()->getCurUserInfo().ssid;
-    send_data["friend_uid"]=ssid;
-    send_data["request_id"]=requestId;
-    ClientConServer::getInstance()->clinet_write_data(send_data);
+    else
+    {
+        QJsonObject send_data;
+        send_data["cmd"]="joingroup";
+        send_data["uid"]=CommonData::getInstance()->getCurUserInfo().ssid;
+        send_data["gid"]=ssid;
+        send_data["request_id"]=requestId;
+        ClientConServer::getInstance()->clinet_write_data(send_data);
+    }
 
     //启动超时检查
     if(!m_timeoutTimer.isActive())

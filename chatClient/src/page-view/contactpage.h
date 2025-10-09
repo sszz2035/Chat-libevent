@@ -46,6 +46,9 @@ public:
     // get user model view
     ElaTreeView *getFriendTreeView();
 
+    //获得ssid对应的卡片信息
+    MsgCombineData getCardInfo(const QString& ssid);
+
 public slots:
     void addContactInfo(const QString& groupingName,const MsgCombineData &info);
 
@@ -62,6 +65,7 @@ signals:
     void sigHideArchPageMaskEffect();
     void sigShowArchPageMaskEffect();
     void sigAddMakeFriendRecord(const UserBaseInfoData& dto, NoticeStatus status);
+    //加入群信号
     void sigAddJoinGroupRecord(const GroupBaseInfoData& dto, NoticeStatus status);
 
     // by user info display page

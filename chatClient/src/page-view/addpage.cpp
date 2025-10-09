@@ -11,6 +11,7 @@
 #include "page-view/contactpage.h"
 #include"utils/log/logfile.h"
 #include <QPainter>
+#include <core/commondata.h>
 
 AddPage::AddPage() {
 
@@ -68,7 +69,6 @@ void AddPage::sltAddUserRes(const UserBaseInfoData &data) {
     addBtn->move(card->pos().x() + card->width() - 70,card->pos().y() + card->height() / 2 - 15);
 
     _userResLayout->insertWidget(_userResLayout->count()-1,card);
-    //2
     _userResMap.insert(QString::number(data.ssid),card);
 
     // 绑定按钮消息
@@ -77,31 +77,31 @@ void AddPage::sltAddUserRes(const UserBaseInfoData &data) {
     });
 }
 
-// void AddPage::sltAddGroupRes(const GroupBaseInfoDTO &dto) {
-//     ElaInteractiveCard * card = new ElaInteractiveCard(this);
-//     ElaToolButton * addBtn = new ElaToolButton(card);
-//     addBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
-//     addBtn->setElaIcon(ElaIconType::Plus);
-//     addBtn->setBorderRadius(10);
-//     addBtn->setFixedSize(40,40);
-//     addBtn->move(card->pos().x() + card->width() - 70,card->pos().y() + card->height() / 2);
+void AddPage::sltAddGroupRes(const GroupBaseInfoData &dto) {
+    ElaInteractiveCard * card = new ElaInteractiveCard(this);
+    ElaToolButton * addBtn = new ElaToolButton(card);
+    QString avatar = (dto.avatarPath=="-1"||dto.avatarPath.isEmpty())?":/include/Image/Cirno.jpg":dto.avatarPath;
+    card->setCardPixmap(avatar);
+    card->setTitle(dto.groupName + " (" + QString::number(dto.ssidGroup) + ")");
+    card->setSubTitle(QString::number(dto.ssidGroup));
+    card->setFixedSize({width(),80});
+    card->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
 
-//     //4
-//     // QString avatar = (dto.avatarPath=="-1"||dto.avatarPath.isEmpty())?":/arch-page/rc-page/img/SS-default-icon.jpg":dto.avatarPath;
-//     // card->setCardPixmap(avatar);
-//     // card->setTitle(dto.groupName + " (" + dto.ssidGroup + ")");
-//     // card->setSubTitle(dto.profile);
 
-//     //5
-//     _groupResLayout->addWidget(card);
-//     // _groupResMap.insert(dto.ssidGroup,card);
+    addBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    addBtn->setElaIcon(ElaIconType::Plus);
+    addBtn->setBorderRadius(10);
+    addBtn->setFixedSize(30,30);
+    addBtn->move(card->pos().x() + card->width() - 70,card->pos().y() + card->height() / 2-15);
 
-//     // 绑定按钮消息
-//     connect(addBtn,&ElaToolButton::clicked,[=]() {
-//         //6
-//         // emit sigAddBtnClicked(dto.ssidGroup,false);
-//     });
-// }
+    _groupResLayout->insertWidget(_groupResLayout->count()-1,card);
+    _groupResMap.insert(QString::number(dto.ssidGroup),card);
+
+    // 绑定按钮消息
+    connect(addBtn,&ElaToolButton::clicked,[=]() {
+        emit sigAddBtnClicked(dto.ssidGroup,true);
+    });
+}
 
 void AddPage::initWindow() {
     resize(500,600);
@@ -209,25 +209,55 @@ void AddPage::initConnectFunc() {
     connect(_search,&ElaSuggestBox::sigEnterPressed,[=](const QString& content) {
         sltShowLoading();
         _closeBtn->raise();
-        emit ClientRequestHandler::getInstance()->queryFuzzySearchRequest(content,false,[this](const QJsonObject& obj){
-            sltHideLoading();
-            //清空原有结果
-            for(auto it=_userResMap.begin();it!=_userResMap.end();it++)
-            {
-                _userResLayout->removeWidget(it.value());
-                it.value()->deleteLater();
-            }
-            _userResMap.clear();
+        bool isGroup=_typeSwitch->getCurrentIndex()==1;
 
-            if(obj.contains("data")&&obj["data"].isArray())
+        emit ClientRequestHandler::getInstance()->queryFuzzySearchRequest(content,isGroup,[this](const QJsonObject& obj){
+            sltHideLoading();
+            bool isGroup=obj["type"]=="group";
+
+            if(!isGroup)
             {
-                for(QJsonValue val:obj["data"].toArray())
+                //清空原有结果
+                for(auto it=_userResMap.begin();it!=_userResMap.end();it++)
                 {
-                    UserBaseInfoData data;
-                    data.ssid=val["uid"].toString().toInt();
-                    data.username=val["username"].toString();
-                    data.avatarPath="";
-                    sltAddUserRes(data);
+                    _userResLayout->removeWidget(it.value());
+                    it.value()->deleteLater();
+                }
+                _userResMap.clear();
+
+                if(obj.contains("data")&&obj["data"].isArray())
+                {
+                    for(QJsonValue val:obj["data"].toArray())
+                    {
+                        UserBaseInfoData data;
+                        data.ssid=val["uid"].toString().toInt();
+                        data.username=val["username"].toString();
+                        data.avatarPath="";
+                        sltAddUserRes(data);
+                    }
+                }
+            }
+
+            else
+            {
+                //清空原有结果
+                for(auto it=_groupResMap.begin();it!=_groupResMap.end();it++)
+                {
+                    _groupResLayout->removeWidget(it.value());
+                    it.value()->deleteLater();
+                }
+                _groupResMap.clear();
+
+                if(obj.contains("data")&&obj["data"].isArray())
+                {
+                    for(QJsonValue val:obj["data"].toArray())
+                    {
+                        GroupBaseInfoData data;
+                        data.ssidGroup=val["gid"].toString().toInt();
+                        data.groupName=val["groupname"].toString();
+                        data.avatarPath="";
+                        sltAddGroupRes(data);
+                    }
                 }
             }
         });
@@ -259,7 +289,36 @@ void AddPage::initConnectFunc() {
             ElaMessageBar::success(ElaMessageBarType::Top,"✅","添加成功！",1000,this);
         }
     });
-    //8
+
+    //添加群组回复
+    connect(ClientRequestHandler::getInstance(),&ClientRequestHandler::addGroupResponse,this,[this](const QJsonObject& obj){
+        if(obj["result"]=="already_member")
+        {
+            ElaMessageBar::error(ElaMessageBarType::Top,"⚠","已是群成员，加入失败！",1000,this);
+            return;
+        }
+        else if(obj["result"]=="success")
+        {
+            qint32 gid=obj["gid"].toInt();
+            QString groupName=obj["groupname"].toString();
+            QString member=obj["member"].toString();
+            FriendshipData data;
+            data.ssid=CommonData::getInstance()->getCurUserInfo().ssid;
+            data.friendSSID=gid;
+            data.friendName=groupName;
+            data.friendType=2;
+            data.groupingName="我加入的群聊";
+            //status是群成员
+            data.status=member;
+            ContactPage::getInstance()->loadCacheContact({data});
+            ElaMessageBar::success(ElaMessageBarType::Top,"✅","加入群成功！",1000,this);
+        }
+        else
+        {
+            ElaMessageBar::error(ElaMessageBarType::Top,"⚠","加入失败,请重试！",1000,this);
+            return;
+        }
+    });
     // connect(g_pCommonData,&CommonData::sigFuzzySearchFriendResponse,this,[=](QList<UserBaseInfoDTO> dto,int waitCount) {
     //     sltHideLoading();
     //     _waitToReloadCount += waitCount;

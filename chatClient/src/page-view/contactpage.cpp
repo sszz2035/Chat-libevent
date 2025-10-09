@@ -12,6 +12,8 @@
 #include <mutex>
 #include <ElaTheme.h>
 
+#include <core/clientrequesthandler.h>
+
 ContactPage * ContactPage::_contactPage = nullptr;
 static std::mutex m;
 
@@ -62,6 +64,7 @@ bool ContactPage::loadCacheContact(const QList<FriendshipData> &caches)
                addContactInfo(it.groupingName,{uInfo,{},{},it.status,false});
         }
         else {
+                //status是群成员
                 QStringList memberList =it.status.split('|');
                 MsgCombineData info;
                 QList<GroupMemberInfoData>memberInfo;
@@ -69,7 +72,7 @@ bool ContactPage::loadCacheContact(const QList<FriendshipData> &caches)
                 info.groupBaseInfo.ssidGroup=it.friendSSID;
                 info.groupBaseInfo.createSSID=memberList[0].toInt();
                 info.groupBaseInfo.groupName=it.friendName;
-                // //处理群成员数据
+                //处理群成员数据
                 for(int i=0;i<memberList.size();i++)
                 {
                     GroupMemberInfoData data;
@@ -108,6 +111,11 @@ ElaTreeView * ContactPage::getFriendTreeView() {
     });
 
     return cpObj;
+}
+
+MsgCombineData ContactPage::getCardInfo(const QString &ssid)
+{
+    return _ssidToCardInfoHash[ssid];
 }
 
 //设置成MsgCombineData就可以既对好友进行操作 也可以对群进行操作
@@ -150,6 +158,7 @@ void ContactPage::addContactInfo(const QString& groupingName,const MsgCombineDat
         }else {
             avatarPath = info.userBaseInfo.avatarPath;
         }
+        //content对应的是群成员
         _groupModel->delGroupingItem(groupingName,{
                                                        QString::number(info.groupBaseInfo.ssidGroup),info.groupBaseInfo.groupName,info.content,avatarPath
                                                    });
@@ -238,8 +247,8 @@ void ContactPage::initContent() {
     // grouping
     _friendModel = new ContactModel(this);
     _groupModel = new ContactModel(this);
-    // _groupingInfos["friend"] = {};
-    // _groupingInfos["group"] = {};
+    _groupingInfos["friend"] = {};
+    _groupingInfos["group"] = {};
     ContactDelegate * fDelegate = new ContactDelegate(this);
     ContactDelegate * gDelegate = new ContactDelegate(this);
     gDelegate->setGroupFlag();
@@ -324,4 +333,15 @@ void ContactPage::initConnectFunc() {
 
     // connect(this,&ContactPage::sigAddMakeFriendRecord,_noticePage,&NoticePage::sltMakeFriendRecord);
     // connect(this,&ContactPage::sigAddJoinGroupRecord,_noticePage,&NoticePage::sltJoinGroupRecord);
+
+    //有新用户加入群聊
+    connect(ClientRequestHandler::getInstance(),&ClientRequestHandler::newMemberJoinResponse,this,[this](const QJsonObject& obj){
+        qint32 gid=obj["gid"].toInt();
+        qint32 uid=obj["uid"].toInt();
+        QString groupName=obj["groupname"].toString();
+        GroupMemberInfoData data;
+        data.ssidGroup=gid;
+        data.ssidMember=uid;
+        _ssidToCardInfoHash[groupName].groupMemberInfo.append(data);
+    });
 }
