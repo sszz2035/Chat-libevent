@@ -149,6 +149,7 @@ public:
      * @brief 将新成员添加到群中
      * @param groupname 群名称
      * @param username 用户名称
+     * @deprecated 此函数已弃用，请使用 database_update_group_member_by_gid 代替
      */
     void database_update_group_member(const std::string &groupname, const std::string &username);
 
@@ -156,7 +157,8 @@ public:
      * @brief 通过群名称获取群ID
      * @param groupname 群名称
      * @return 群ID，如果不存在返回0
-     * @note 此函数已弃用
+     * @deprecated 此函数已弃用，请直接使用gid进行操作
+
      */
     uint64_t database_get_gid_by_groupname(const std::string &groupname);
 
@@ -180,6 +182,21 @@ public:
      * @param gid 群组ID
      */
     void database_update_grouplist_by_uid(uint64_t uid, const std::string &gid);
+
+    /**
+     * @brief 通过群ID获取群成员列表
+     * @param gid 群ID
+     * @return 群成员列表，格式为"member1|member2|member3..."，如果群不存在返回空字符串
+     */
+    std::string database_get_group_members_by_gid(uint64_t gid);
+
+    /**
+     * @brief 通过多个UID批量查询用户信息
+     * @param uids 用户ID数组
+     * @param result 用于接收查询结果的JSON对象
+     * @return 成功返回true，失败返回false
+     */
+    bool database_get_users_by_uids(const std::vector<uint64_t>& uids, Json::Value& result);
 
 public:
     /**

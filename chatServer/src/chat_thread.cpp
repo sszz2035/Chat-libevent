@@ -166,6 +166,14 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
         {
             t->thread_query_fuzzy_search(bev, val);
         }
+        else if (val["cmd"] == "query_by_gid")
+        {
+            t->thread_query_group_by_gid(bev, val);
+        }
+        else if(val["cmd"]=="query_users_batch")
+        {
+            t->thread_query_users_by_uids_batch(bev,val);
+        }
     }
 }
 
@@ -560,23 +568,26 @@ void ChatThread::thread_create_group(struct bufferevent *bev, const Json::Value 
     // 群成员
     std::string groupMember = v["group_member"].asString();
 
-    //群主id
-    uint64_t owner_id=v["owner"].asUInt64();
-    std::string owner=std::to_string(owner_id);
+    // 群主id
+    uint64_t owner_id = v["owner"].asUInt64();
+    std::string owner = std::to_string(owner_id);
 
     Json::Value val;
+
     // 解析群成员
     std::string member[1024];
     int memberCount = thread_parse_string(groupMember, member);
+
     // 在数据库中添加新群
     if (!db->database_connect())
     {
         LOG_ERROR("database_connect");
         return;
     }
-    uint64_t gid =db->database_add_new_group(groupname, owner);
 
-    if(gid==0)
+    uint64_t gid = db->database_add_new_group(groupname, owner);
+
+    if (gid == 0)
     {
         LOG_ERROR("Failed to create group");
         db->database_disconnect();
@@ -611,20 +622,26 @@ void ChatThread::thread_create_group(struct bufferevent *bev, const Json::Value 
     val["cmd"] = "creategroup_reply";
     val["result"] = "success";
     val["gid"] = Json::Value::UInt64(gid);
-    val["request_id"]=v["request_id"];
+    val["groupmember"] = groupMember;
+    val["request_id"] = v["request_id"];
     val["groupname"] = groupname;
-    thread_write_data(bev, val);
 
+    // 向所有群成员发送群信息
+    for (int i = 0; i < memberCount; i++)
+    {
+        struct bufferevent *bvt = info->list_friend_online(member[i]);
+        if (bvt != nullptr)
+            thread_write_data(bvt, val);
+    }
 }
 
 void ChatThread::thread_join_group(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string groupname = v["groupname"].asString();
-    std::string username = v["username"].asString();
+    uint64_t gid = v["gid"].asUInt64();
+    uint64_t uid = v["uid"].asUInt64();
     Json::Value val;
-
-    // 获取群ID
-    uint64_t gid = 0;
+    val["request_id"]=v["request_id"];
+    // 检查群是否存在
     if (!db->database_connect())
     {
         LOG_ERROR("database_connect");
@@ -633,81 +650,142 @@ void ChatThread::thread_join_group(struct bufferevent *bev, const Json::Value &v
         thread_write_data(bev, val);
         return;
     }
-    //有bug
-    gid = db->database_get_gid_by_groupname(groupname);
+    
+    // 检查群是否存在
+    std::string groupname = db->database_get_groupname_by_gid(gid);
     db->database_disconnect();
 
-    if (gid == 0)
+    if (groupname.empty())
     {
         val["cmd"] = "joingroup_reply";
-        val["result"] = "not_exist";
+        val["result"] = "group_not_exist";
+        thread_write_data(bev, val);
+        return;
+    }
+
+    // 检查用户是否存在
+    if (!db->database_connect())
+    {
+        LOG_ERROR("database_connect");
+        val["cmd"] = "joingroup_reply";
+        val["result"] = "db_error";
+        thread_write_data(bev, val);
+        return;
+    }
+    
+    if (!db->database_user_is_exist_by_uid(uid))
+    {
+        val["cmd"] = "joingroup_reply";
+        val["result"] = "user_not_exist";
+        thread_write_data(bev, val);
+        db->database_disconnect();
+        return;
+    }
+    
+    // 获取用户名
+    std::string username = db->database_get_username_by_uid(uid);
+    db->database_disconnect();
+
+    if (username.empty())
+    {
+        val["cmd"] = "joingroup_reply";
+        val["result"] = "user_not_exist";
         thread_write_data(bev, val);
         return;
     }
 
     // 判断群中是否已有当前成员
-    if (info->list_member_is_group_by_gid(gid, username))
+    if (info->list_member_is_group_by_gid(gid, std::to_string(uid)))
     {
         val["cmd"] = "joingroup_reply";
-        val["result"] = "already";
+        val["result"] = "already_member";
         thread_write_data(bev, val);
         return;
     }
 
-    // 修改数据库
+    // 修改数据库 - 添加成员到群组
     db->database_connect();
-    db->database_update_group_member(groupname, username);
+    db->database_update_group_member_by_gid(gid, std::to_string(uid));
+    db->database_update_grouplist_by_uid(uid, std::to_string(gid));
     db->database_disconnect();
 
     // 更新链表中群信息
-    info->list_update_group_member_by_gid(gid, username);
+    info->list_update_group_member_by_gid(gid, std::to_string(uid));
 
     // 向群中所有用户发送消息
     std::list<std::string> l = info->list_get_list_by_gid(gid);
-    std::string member;
+    std::string member_str;
     for (auto it = l.begin(); it != l.end(); it++)
     {
-        if (*it == username)
+        if (*it == std::to_string(uid))
             continue;
-        member.append(*it);
-        member.append("|");
+        member_str.append(*it);
+        member_str.append("|");
         struct bufferevent *b = info->list_friend_online(*it);
         if (b == NULL)
             continue;
         val["cmd"] = "new_member_join";
         val["gid"] = Json::Value::UInt64(gid);
         val["groupname"] = groupname;
+        val["uid"] = Json::Value::UInt64(uid);
         val["username"] = username;
         thread_write_data(b, val);
     }
     // 去掉最后的'|'
-    if (!member.empty())
+    if (!member_str.empty())
     {
-        member.erase(member.size() - 1);
+        member_str.erase(member_str.size() - 1);
     }
     val.clear();
     // 向自己发送消息
     val["cmd"] = "joingroup_reply";
+    val["request_id"]=v["request_id"];
     val["result"] = "success";
     val["gid"] = Json::Value::UInt64(gid);
     val["groupname"] = groupname;
-    val["member"] = member;
+    val["member"] = member_str;
     thread_write_data(bev, val);
 }
+
 
 void ChatThread::thread_group_chat(struct bufferevent *bev, const Json::Value &v)
 {
     uint64_t gid = v["gid"].asUInt64();
-    std::string groupname = v["groupname"].asString();
-    std::string username = v["username"].asString();
+    uint64_t uid = v["uid"].asUInt64();
     std::string text = v["text"].asString();
+    
+    // 获取发送者用户名
+    if (!db->database_connect())
+    {
+        LOG_ERROR("database_connect");
+        return;
+    }
+    
+    std::string username = db->database_get_username_by_uid(uid);
+    db->database_disconnect();
+    
+    if (username.empty())
+    {
+        LOG_ERROR("username not found for uid");
+        return;
+    }
+
+    // 获取群组名称
+    if (!db->database_connect())
+    {
+        LOG_ERROR("database_connect");
+        return;
+    }
+    
+    std::string groupname = db->database_get_groupname_by_gid(gid);
+    db->database_disconnect();
 
     // 获取成员列表
     std::list<std::string> member = info->list_get_list_by_gid(gid);
     // 将消息转发给群成员
     for (auto it = member.begin(); it != member.end(); it++)
     {
-        if (*it == username)
+        if (*it == std::to_string(uid))
             continue;
         struct bufferevent *b = info->list_friend_online(*it);
         if (b == NULL)
@@ -716,7 +794,8 @@ void ChatThread::thread_group_chat(struct bufferevent *bev, const Json::Value &v
         val["cmd"] = "groupchat_reply";
         val["gid"] = Json::Value::UInt64(gid);
         val["groupname"] = groupname;
-        val["from"] = username;
+        val["from_uid"] = Json::Value::UInt64(uid);
+        val["from_username"] = username;
         val["text"] = text;
         thread_write_data(b, val);
     }
@@ -827,6 +906,35 @@ void ChatThread::thread_query_user_by_uid(struct bufferevent *bev, const Json::V
     db->database_disconnect();
 }
 
+void ChatThread::thread_query_group_by_gid(struct bufferevent *bev, const Json::Value &v)
+{
+    Json::Value val;
+    if (!v.isMember("gid"))
+    {
+        val["cmd"] = "invaild_request";
+        thread_write_data(bev, val);
+        return;
+    }
+
+    uint64_t gid = v["gid"].asUInt64();
+    db->database_connect();
+    // if (!db->database_user_is_exist_by_uid(uid))
+    // {
+    //     val["cmd"] = "not_exist";
+    //     thread_write_data(bev, val);
+    //     db->database_disconnect();
+    //     return;
+    // }
+
+    val["cmd"] = "query_gid_reply";
+    val["gid"] = Json::Value::UInt64(gid);
+    val["groupname"] = db->database_get_groupname_by_gid(gid);
+    val["groupmember"] = db->database_get_group_members_by_gid(gid);
+    val["request_id"] = v["request_id"];
+    thread_write_data(bev, val);
+    db->database_disconnect();
+}
+
 void ChatThread::thread_query_fuzzy_search(struct bufferevent *bev, const Json::Value &v)
 {
     Json::Value responce;
@@ -840,7 +948,7 @@ void ChatThread::thread_query_fuzzy_search(struct bufferevent *bev, const Json::
     std::stringstream query;
     query << "\'\%" << content << "\%\'";
 
-    // 1.0版本 后期考虑用分页查询、索引优化、 可以加入功能：中间隔字仍旧匹配
+    // 可优化：模糊查询
     if (!isGroup)
     {
         responce["type"] = "friend";
@@ -848,9 +956,13 @@ void ChatThread::thread_query_fuzzy_search(struct bufferevent *bev, const Json::
         WHERE uid LIKE %s OR username LIKE %s;",
                 query.str().c_str(), query.str().c_str());
     }
+
     else
     {
         responce["type"] = "group";
+        sprintf(sql, "SELECT gid,groupname FROM chat_group\
+        WHERE gid LIKE %s OR groupname LIKE %s;",
+                query.str().c_str(), query.str().c_str());
     }
     std::vector<std::vector<std::string>> rows;
     int sz = db->exec_query_and_fetch_rows(sql, rows);
@@ -864,15 +976,100 @@ void ChatThread::thread_query_fuzzy_search(struct bufferevent *bev, const Json::
     }
 
     // 对查找到的数据进行处理
-    for (int i = 0; i < sz; i++)
+    if (!isGroup)
     {
-        Json::Value row_data;
-        row_data["uid"] = rows[i][0];
-        row_data["username"] = rows[i][1];
-        val.append(row_data);
+        for (int i = 0; i < sz; i++)
+        {
+            Json::Value row_data;
+            row_data["uid"] = rows[i][0];
+            row_data["username"] = rows[i][1];
+            val.append(row_data);
+        }
     }
+
+    else
+    {
+        for (int i = 0; i < sz; i++)
+        {
+            Json::Value row_data;
+            row_data["gid"] = rows[i][0];
+            row_data["groupname"] = rows[i][1];
+            val.append(row_data);
+        }
+    }
+
     responce["data"] = val;
     thread_write_data(bev, responce);
+    db->database_disconnect();
+}
+
+void ChatThread::thread_query_users_by_uids_batch(struct bufferevent *bev, const Json::Value &v)
+{
+    Json::Value response;
+    response["cmd"] = "query_users_batch_reply";
+    
+    // 检查是否有uids字段
+    if (!v.isMember("uids") || !v["uids"].isArray())
+    {
+        response["error"] = "invalid_request";
+        response["message"] = "Missing or invalid 'uids' field";
+        thread_write_data(bev, response);
+        return;
+    }
+    
+    // 解析uid数组
+    std::vector<uint64_t> uids;
+    for (const auto& uid_val : v["uids"])
+    {
+        if (uid_val.isUInt64())
+        {
+            uids.push_back(uid_val.asUInt64());
+        }
+    }
+    
+    if (uids.empty())
+    {
+        response["error"] = "invalid_request";
+        response["message"] = "No valid UIDs provided";
+        thread_write_data(bev, response);
+        return;
+    }
+    
+    // 连接数据库
+    db->database_connect();
+    
+    // 查询用户信息
+    Json::Value users;
+    if (db->database_get_users_by_uids(uids, users))
+    {
+        // 为每个用户添加在线状态
+        for (auto& user : users)
+        {
+            uint64_t uid = user["uid"].asUInt64();
+            if (info->list_friend_online(std::to_string(uid)))
+            {
+                user["status"] = "online";
+            }
+            else
+            {
+                user["status"] = "offline";
+            }
+        }
+        response["users"] = users;
+    }
+    else
+    {
+        response["users"] = Json::Value(Json::arrayValue);
+    }
+    
+    // 添加request_id（如果存在）
+    if (v.isMember("request_id"))
+    {
+        response["request_id"] = v["request_id"];
+    }
+    
+    // 发送响应
+    thread_write_data(bev, response);
     db->database_disconnect();
 }
 

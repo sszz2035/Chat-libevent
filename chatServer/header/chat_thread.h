@@ -173,11 +173,26 @@ private:
     void thread_query_user_by_uid(struct bufferevent* bev,const Json::Value& v);
 
     /**
+     * @brief 处理客户端通过gid查询群组信息事件
+     * @param bev 发出请求的客户端事件
+     * @param v 要查询的群组信息
+    */
+    void thread_query_group_by_gid(struct bufferevent* bev,const Json::Value& v);
+
+    /**
      * @brief 处理客户端添加好友时模糊查询事件
      * @param bev 发出请求的客户端事件
      * @param v 要查询的用户信息
     */
     void thread_query_fuzzy_search(struct bufferevent* bev,const Json::Value& v);
+
+    /**
+     * @brief 处理批量查询用户信息事件
+     * @param bev 发出请求的客户端事件
+     * @param v 包含多个uid的JSON数组
+     */
+    void thread_query_users_by_uids_batch(struct bufferevent* bev,const Json::Value& v);
+
     // 事件集合
     std::unique_ptr<struct event_base,EventBaseDeleter>base;
     // 线程
