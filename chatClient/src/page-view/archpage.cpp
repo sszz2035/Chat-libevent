@@ -373,6 +373,7 @@ void ArchPage::initConnectFunc() {
 
         sltShowMaskEffect();
         _createGroupPage->show();
+        emit g_pContactPage->sigTriggerAddToCreateGroupList({});
     });
 
     connect(this,&ArchPage::sigJumpOtherPageRequest,this,[=](PageName pageName) {

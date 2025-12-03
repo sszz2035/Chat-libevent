@@ -60,6 +60,22 @@ void CreateGroupPage::sltHideLoading() {
 
 void CreateGroupPage::sltAddToCreateGroupList(const UserBaseInfoData &dto) {
 
+    UserBaseInfoData myInfo=CommonData::getInstance()->getCurUserInfo();
+    if(_toAddUserHash.find(myInfo.ssid)==_toAddUserHash.end())
+    {
+        QString myName = myInfo.username + " (" + QString::number(myInfo.ssid) + ")";
+        QStandardItem* newItem=new QStandardItem(myName);
+        newItem->setEditable(false);
+        QString userAvatar=":/include/Image/Cirno.jpg";
+        QPixmap pixmap(userAvatar);
+        pixmap = pixmap.scaled(32, 32, Qt::KeepAspectRatio);
+        newItem->setIcon(QIcon(pixmap));
+        _dataModel->appendRow(newItem);
+        _toAddUserHash.insert(myInfo.ssid,myInfo);
+    }
+
+    if(dto.ssid==0) return;
+
     if (!_selectedList->isVisible()) _selectedList->show();
     QString userName = dto.username + " (" + QString::number(dto.ssid) + ")";
 
@@ -170,17 +186,7 @@ void CreateGroupPage::initContent() {
 
     _selectedList->setModel(_dataModel);
     _selectedList->show();
-    UserBaseInfoData info=CommonData::getInstance()->getCurUserInfo();
-    QString userName = info.username + " (" + QString::number(info.ssid) + ")";
 
-    QStandardItem* newItem=new QStandardItem(userName);
-    newItem->setEditable(false);
-    QString userAvatar=":/include/Image/Cirno.jpg";
-    QPixmap pixmap(userAvatar);
-    pixmap = pixmap.scaled(32, 32, Qt::KeepAspectRatio);
-    newItem->setIcon(QIcon(pixmap));
-    _dataModel->appendRow(newItem);
-    _toAddUserHash.insert(info.ssid,info);
 }
 
 void CreateGroupPage::initConnectFunc() {

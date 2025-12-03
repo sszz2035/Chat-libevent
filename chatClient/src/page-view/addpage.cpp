@@ -23,7 +23,6 @@ AddPage::AddPage() {
 
     initConnectFunc();
 
-
 }
 
 AddPage::~AddPage() {

@@ -22,7 +22,6 @@ public:
 
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 
-    // enable mode which show send and receiver name
     void setGroupMode(bool isEnable);
 
     enum CustomRoles {

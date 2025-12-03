@@ -38,6 +38,7 @@
 #include <QListView>
 #include <QTimer>
 #include <mutex>
+#include <QJsonArray>
 
 #include <core/clientrequesthandler.h>
 
@@ -614,7 +615,7 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
             // get grandfather to link card and set content display
             MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
 
-//             // replace image url to [图片] placeholders
+            // replace image url to [图片] placeholders
             // QRegularExpression imgRegex("<img[^>]*>", QRegularExpression::CaseInsensitiveOption);
             // html_cp.replace(imgRegex,"[图片]");
             QFont font;
@@ -641,22 +642,11 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
         listAndInputLayout->setContentsMargins(0,0,0,0);
         listAndInputLayout->setSpacing(0);
 
-//         // group member list dock
+        // group member list dock
         _memberOfGroupList = new GroupMemberDock(this);
         _memberOfGroupList->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
         _memberOfGroupList->setFixedWidth(120);
         _memberOfGroupList->setMaximumHeight(_inputWid->height());
-
-//         // TODO: mark
-        QHash<QString,UserBaseInfoData> tmpUserHash;
-        // for (const auto &it : dto.groupMemberInfo ) {
-        //     UserBaseInfoData user = g_pCommonData->getUserInfoBySSID(it.ssidMember);
-        //     if (user.avatarPath == "-1" || user.avatarPath.isEmpty()) {
-        //         user.avatarPath = ":/message-page/rc-page/img/SS-default-icon.jpg";
-        //     }
-//             _memberOfGroupList->addMember(user.avatarPath, user.ssid, user.username );
-//             tmpUserHash.insert(it.ssidMember,user);
-        // }
 
         std::vector<qint32>uids;
         for(const auto& it:dto.groupMemberInfo)
@@ -664,46 +654,63 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
             uids.push_back(it.ssidMember);
         }
         ClientRequestHandler::getInstance()->queryUserInfoBatch(uids,[this](const QJsonObject& obj){
+            QHash<qint32,UserBaseInfoData> tmpUserHash;
+            if(obj.contains("users")&&obj["users"].isArray())
+            {
+                QJsonArray users=obj["users"].toArray();
+                for(const QJsonValue val:users)
+                {
+                    UserBaseInfoData user;
+                    user.ssid=val["uid"].toInt();
+                    user.username=val["username"].toString();
+                    if(user.avatarPath=="-1"||user.avatarPath.isEmpty())
+                    {
+                        user.avatarPath=":/include/Image/Cirno.jpg";
+                    }
+                    _memberOfGroupList->addMember(user.avatarPath,QString::number(user.ssid),user.username);
+                    tmpUserHash.insert(user.ssid,user);
+                }
+                //         // connect group member single clicked
+                //lambda会保存tmpUserHash的副本,即使它被销毁
+                //         connect(_memberOfGroupList,&GroupMemberDock::sigClickedMember,this,[=](QString ssid) {
+                //             // TODO : send request to server
+                //             UserBaseInfoDTO user = tmpUserHash.value(ssid);
+                //             UserType clickedType = Strangers;
+                //             if ( g_pCommonData->getCurUserInfo().ssid == ssid) {
+                //                 clickedType = Myself;
+                //             }
+                //             if (g_pCommonData->isCurUserFriend(ssid)) {
+                //                 clickedType = Friends;
+                //             }
+
+                //             UserInfo uInfo{
+                //                 clickedType,
+                //                 static_cast<int>(std::difftime(GetCurTime::getTimeObj()->getCurTimeStamp(),user.createTime) / (60 * 60 * 24) + 1),
+                //                 static_cast<int>(user.thumbUpCount) , user.ssid, user.username, "", user.personalSign,
+                //                 user.avatarPath,{""}
+                //             };
+
+                //             UserPage * wid = g_pUserPage(clickedType,uInfo,{});
+
+                //             QPoint globalPos = QCursor::pos();
+                //             QPoint offset(wid->width(),wid->height());
+                //             wid->showAt(globalPos-offset);
+                //         });
+            }
         });
-//         _memberOfGroupList->setObjectName(QString::fromUtf8("_memberOfGroupList"));
-//         _memberOfGroupList->setStyleSheet("#_memberOfGroupList {background-color: rgb(242, 242, 242);}");
+        _memberOfGroupList->setObjectName(QString::fromUtf8("_memberOfGroupList"));
+        _memberOfGroupList->setStyleSheet("#_memberOfGroupList {background-color: rgb(242, 242, 242);}");
 
-//         listAndInputLayout->addWidget(_inputWid);
-//         listAndInputLayout->addWidget(_memberOfGroupList);
+        listAndInputLayout->addWidget(_inputWid);
+        listAndInputLayout->addWidget(_memberOfGroupList);
 
-//         _layout->addWidget(_cgP);
-//         _layout->addItem(listAndInputLayout);
+        _layout->addWidget(_cgP);
+        _layout->addItem(listAndInputLayout);
 
-//         // connect group member single clicked
-//         connect(_memberOfGroupList,&GroupMemberDock::sigClickedMember,this,[=](QString ssid) {
-//             // TODO : send request to server
-//             UserBaseInfoDTO user = tmpUserHash.value(ssid);
-//             UserType clickedType = Strangers;
-//             if ( g_pCommonData->getCurUserInfo().ssid == ssid) {
-//                 clickedType = Myself;
-//             }
-//             if (g_pCommonData->isCurUserFriend(ssid)) {
-//                 clickedType = Friends;
-//             }
-
-//             UserInfo uInfo{
-//                 clickedType,
-//                 static_cast<int>(std::difftime(GetCurTime::getTimeObj()->getCurTimeStamp(),user.createTime) / (60 * 60 * 24) + 1),
-//                 static_cast<int>(user.thumbUpCount) , user.ssid, user.username, "", user.personalSign,
-//                 user.avatarPath,{""}
-//             };
-
-//             UserPage * wid = g_pUserPage(clickedType,uInfo,{});
-
-//             QPoint globalPos = QCursor::pos();
-//             QPoint offset(wid->width(),wid->height());
-//             wid->showAt(globalPos-offset);
-//         });
-
-//         connect(_inputWid, &InputWidget::sigSendBtnClicked, this, [=](const QString& html) {
-//             QString html_cp = html;
+        connect(_inputWid, &InputWidget::sigSendBtnClicked, this, [=](const QString& html) {
+            QString html_cp = html;
 //             // add msg pic to the tmp
-//             QList<QString> fileIds;
+            QList<QString> fileIds;
 //             QMap<QString,QImage>& cacheImage = _inputWid->_inputEditFrame->getImageTmpMap();
 //             if (!_inputWid->_inputEditFrame->getImageTmpMap().isEmpty()) {
 //                 for (auto imageIt = cacheImage.begin(); imageIt != cacheImage.end(); imageIt++) {
@@ -714,42 +721,42 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
 //                 }
 //                 cacheImage.clear();
 //             }
-//             _inputWid->_inputEditFrame->clear();
-//             _cgP->insertMsgBubble({_curSSID,_curName,
-//                                    html_cp,g_pCommonData->getCurUserInfo().avatarPath,true});
+            _inputWid->_inputEditFrame->clear();
+            _cgP->insertMsgBubble({QString::number(_curSSID),_curName,
+                                   html_cp,CommonData::getInstance()->getCurUserInfo().avatarPath,true});
 
 //             // store msg
-//             qint64 curTimeStamp = GetCurTime::getTimeObj()->getCurTimeStamp();
-//             MessageContentDTO msgDto{
-//                 _curSSID,
-//                 ContentType::Text,
-//                 html_cp,
-//                 fileIds,
-//                 {
-//                     2,
-//                     dto.groupBaseInfo.ssidGroup
-//                 },
-//                 curTimeStamp
-//             };
+            qint64 curTimeStamp = GetCurTime::getTimeObj()->getCurTimeStamp();
+            MessageContentData msgDto{
+                _curSSID,
+                ContentType::Text,
+                html_cp,
+                fileIds,
+                {
+                    2,
+                    dto.groupBaseInfo.ssidGroup
+                },
+                curTimeStamp
+            };
 
 //             // get grandfather to link card and set content display
-//             MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
+            MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
 
 //             // replace image url to [图片] placeholders
 //             QRegularExpression imgRegex("<img[^>]*>", QRegularExpression::CaseInsensitiveOption);
 //             html_cp.replace(imgRegex,"[图片]");
-//             QFont font;
-//             QTextDocument docu;
-//             docu.setHtml(html_cp);
-//             font.setPointSize(9);
-//             msgPage->_ssidLinkCardHash[dto.groupBaseInfo.ssidGroup]->setTimeContent(QString::fromStdString(
-//                                                                                         GetCurTime::getTimeObj()->getMsgTypeTime(curTimeStamp)),
-//                                                                                     Qt::gray,font);
-//             msgPage->_ssidLinkCardHash[dto.groupBaseInfo.ssidGroup]->setSubTitle(docu.toPlainText());
+            QFont font;
+            QTextDocument docu;
+            docu.setHtml(html_cp);
+            font.setPointSize(9);
+            msgPage->_ssidLinkCardHash[dto.groupBaseInfo.ssidGroup]->setTimeContent(QString::fromStdString(
+                                                                                        GetCurTime::getTimeObj()->getMsgTypeTime(curTimeStamp)),
+                                                                                    Qt::gray,font);
+            msgPage->_ssidLinkCardHash[dto.groupBaseInfo.ssidGroup]->setSubTitle(docu.toPlainText());
 
 //             // sync with server
-//             g_pCommonData->setMessageContentData({msgDto});
-//         });
+            CommonData::getInstance()->setMessageContentData({msgDto});
+        });
     }
     this->setLayout(_layout);
     this->setObjectName("ConversationPage");

@@ -266,6 +266,19 @@ void ClientRequestHandler::client_reply_info()
         }
     }
 
+    //群聊回复
+    else if(obj.value("cmd").toString()=="groupchat_reply")
+    {
+        MessageContentData data;
+        data.contentType=ContentType::Text;
+        data.content=obj["text"].toString();
+        data.senderSSID=obj["from_uid"].toInt();
+        data.createTime=1;
+        data.recipient.recipientType=2;
+        data.recipient.recipientSSID=obj["gid"].toInt();
+        MessagePage::getInstance()->loadCacheMsg({data});
+    }
+
     //如果没有待处理请求 停止计时器
     {
         std::lock_guard<std::mutex> lock(m_requestsMutex);
@@ -349,15 +362,29 @@ void ClientRequestHandler::sendMessageContentHandler(const QList<MessageContentD
             std::lock_guard<std::mutex>lock(m_requestsMutex);
             m_pendingRequests.insert(requestId,{});
         }
+        if(content.recipient.recipientType==1)
+        {
+            QJsonObject send_data;
+            //好友私聊
+            send_data.insert("cmd","private");
+            send_data.insert("request_id",requestId);
+            send_data.insert("uid",content.senderSSID);
+            send_data.insert("tofriend",content.recipient.recipientSSID);
+            send_data.insert("text",content.content);
+            ClientConServer::getInstance()->clinet_write_data(send_data);
+        }
 
-        QJsonObject send_data;
-        //好友私聊
-        send_data.insert("cmd","private");
-        send_data.insert("request_id",requestId);
-        send_data.insert("uid",content.senderSSID);
-        send_data.insert("tofriend",content.recipient.recipientSSID);
-        send_data.insert("text",content.content);
-        ClientConServer::getInstance()->clinet_write_data(send_data);
+        else if(content.recipient.recipientType==2)
+        {
+            QJsonObject send_data;
+            //群聊
+            send_data.insert("cmd","groupchat");
+            send_data.insert("request_id",requestId);
+            send_data.insert("uid",content.senderSSID);
+            send_data.insert("gid",content.recipient.recipientSSID);
+            send_data.insert("text",content.content);
+            ClientConServer::getInstance()->clinet_write_data(send_data);
+        }
     }
     //启动超时检查
     if(!m_timeoutTimer.isActive())
