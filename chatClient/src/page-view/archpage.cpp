@@ -13,7 +13,7 @@
 // #include "../file-manager-page/FileManagerPage.h"
 // #include "../user-page/UserPage.h"
 // #include "../llmapp-page/LLMAppPage.h"
-
+#include "llm-page/LLMChatPage.h"
 #include "ElaContentDialog.h"
 #include "ElaStatusBar.h"
 #include "ElaText.h"
@@ -285,6 +285,8 @@ void ArchPage::initContent() {
 
     // about
     // addFooterNode("About", nullptr, _aboutKey, 0, ElaIconType::CircleInfo);
+
+    addPageNode("LLMApp",g_pLLMChatPage,_llmAppNum,ElaIconType::Code);
 
     _addButton->setElaIcon(ElaIconType::CirclePlus);
     _addButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);

@@ -1,0 +1,4 @@
+<RCC>
+    <qresource prefix="/llm-chat-page/">
+    </qresource>
+</RCC>

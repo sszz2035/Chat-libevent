@@ -49,8 +49,6 @@ qt_add_executable(chatclient
     src/utils/get-time/GetCurTime.cpp
     src/utils/get-time/GetCurTime.h
     src/core/commondata.h src/core/commondata.cpp
-
-
 )
 
 #添加资源文件
@@ -67,12 +65,17 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
+#添加子目录
+add_subdirectory(src/page-view/llm-page)
+
+# 链接库
 target_link_libraries(chatclient
     PRIVATE
         Qt::Core
         Qt::Widgets
         ${CMAKE_CURRENT_SOURCE_DIR}/lib/ElaWidgetToolsd.lib
 )
+target_link_libraries(chatclient PRIVATE LLMChatPagePlugin)
 target_link_libraries(chatclient PRIVATE Qt6::Widgets)
 target_link_libraries(chatclient PRIVATE Qt6::Core Qt6::Network)
 target_link_libraries(chatclient PRIVATE Qt6::Core)
