@@ -1,10 +1,38 @@
 #include "chat_thread.h"
 #include <sstream>
 #include "log.h"
+#include <filesystem>
+
+// Base64解码函数
+static std::string base64_decode(const std::string& encoded) {
+    static const std::string base64_chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    std::string decoded;
+    std::vector<int> T(256, -1);
+    for (int i = 0; i < 64; i++) {
+        T[base64_chars[i]] = i;
+    }
+
+    int val = 0, valb = -8;
+    for (unsigned char c : encoded) {
+        if (c == '=') break;
+        if (T[c] == -1) continue;
+        val = (val << 6) + T[c];
+        valb += 6;
+        if (valb >= 0) {
+            decoded.push_back(char((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return decoded;
+}
 ChatThread::ChatThread() : base(event_base_new()),
                            _thread(std::make_unique<std::thread>(worker, this)),
                            _id(_thread->get_id())
 {
+    // 初始化文件存储目录
+    init_file_storage();
 }
 
 ChatThread::~ChatThread()
@@ -148,6 +176,21 @@ void ChatThread::thread_read_cb(struct bufferevent *bev, void *ctx)
         }
         // 处理文件传输事件
         else if (val["cmd"] == "file")
+        {
+            t->thread_transer_file(bev, val);
+        }
+        // 处理私聊图片消息
+        else if (val["cmd"] == "image_private")
+        {
+            t->thread_image_private_chat(bev, val);
+        }
+        // 处理群聊图片消息
+        else if (val["cmd"] == "image_group")
+        {
+            t->thread_image_group_chat(bev, val);
+        }
+        // 处理文件传输消息
+        else if (val["cmd"] == "transfer_file")
         {
             t->thread_transer_file(bev, val);
         }
@@ -803,40 +846,114 @@ void ChatThread::thread_group_chat(struct bufferevent *bev, const Json::Value &v
 
 void ChatThread::thread_transer_file(struct bufferevent *bev, const Json::Value &v)
 {
-    std::string username = v["username"].asString();
-    std::string friendname = v["friendname"].asString();
-    std::string filename = v["filename"].asString();
-    std::string filelength = v["filelength"].asString();
-    std::string step = v["step"].asString();
+    // 获取文件信息
+    uint64_t userUid = v["uid"].asUInt64();
+    std::string fileId = v["file_id"].asString();
+    std::string fileData = v["file_data"].asString();
+    std::string fileName = v["file_name"].asString();
+    int fileSize = v["file_size"].asInt();
+
     Json::Value val;
-    // 判断对方是否在线
-    struct bufferevent *b = info->list_friend_online(friendname);
-    if (b == NULL)
-    {
-        val["cmd"] = "file_reply";
-        val["result"] = "offline";
+    if (v.isMember("request_id"))
+        val["request_id"] = v["request_id"];
+
+    // 判断是私聊还是群聊
+    bool isGroupChat = v.isMember("gid");
+    uint64_t targetId = 0;
+
+    if (isGroupChat) {
+        // 群聊文件传输
+        targetId = v["gid"].asUInt64();
+
+        // 获取发送者用户名
+        if (!db->database_connect())
+        {
+            LOG_ERROR("database_connect");
+            return;
+        }
+
+        std::string username = db->database_get_username_by_uid(userUid);
+        db->database_disconnect();
+
+        if (username.empty())
+        {
+            LOG_ERROR("username not found for uid");
+            return;
+        }
+
+        // 获取群组名称
+        if (!db->database_connect())
+        {
+            LOG_ERROR("database_connect");
+            return;
+        }
+
+        std::string groupname = db->database_get_groupname_by_gid(targetId);
+        db->database_disconnect();
+
+        // 获取成员列表并发送文件消息
+        std::list<std::string> member = info->list_get_list_by_gid(targetId);
+        for (auto it = member.begin(); it != member.end(); it++)
+        {
+            // 不发送给自己
+            if (*it == std::to_string(userUid))
+                continue;
+
+            struct bufferevent *memberBev = info->list_friend_online(*it);
+            if (memberBev == NULL)
+                continue;
+
+            Json::Value fileVal;
+            fileVal["cmd"] = "transfer_file";
+            fileVal["gid"] = Json::Value::UInt64(targetId);
+            fileVal["groupname"] = groupname;
+            fileVal["from_uid"] = Json::Value::UInt64(userUid);
+            fileVal["from_username"] = username;
+            fileVal["file_id"] = fileId;
+            fileVal["file_data"] = fileData;
+            fileVal["file_name"] = fileName;
+            fileVal["file_size"] = fileSize;
+            thread_write_data(memberBev, fileVal);
+        }
+
+        // 回复发送者成功
+        val["cmd"] = "transfer_file_reply";
+        val["result"] = "success";
         thread_write_data(bev, val);
-        return;
     }
-    // 对step判断
-    if (step == "1")
-    {
-        val["cmd"] = "file_name";
-        val["filename"] = filename;
-        val["filelength"] = filelength;
-        val["fromuser"] = username;
+    else {
+        // 私聊文件传输
+        targetId = v["tofriend"].asUInt64();
+
+        // 查找好友是否在线
+        struct bufferevent *friendBev = info->list_friend_online(std::to_string(targetId));
+
+        // 好友不在线
+        if (friendBev == NULL)
+        {
+            val["cmd"] = "transfer_file_reply";
+            val["result"] = "offline";
+            thread_write_data(bev, val);
+            return;
+        }
+
+        // 好友在线，发送文件消息
+        val["cmd"] = "transfer_file";
+        val["fromfriend"] = Json::Value::UInt64(userUid);
+        val["file_id"] = fileId;
+        val["file_data"] = fileData;
+        val["file_name"] = fileName;
+        val["file_size"] = fileSize;
+        thread_write_data(friendBev, val);
+
+        // 回复发送者成功
+        val.clear();
+        val["cmd"] = "transfer_file_reply";
+        val["result"] = "success";
+        if (v.isMember("request_id"))
+            val["request_id"] = v["request_id"];
+        thread_write_data(bev, val);
     }
-    else if (step == "2")
-    {
-        std::string text = v["text"].asString();
-        val["cmd"] = "file_transfer";
-        val["text"] = text;
-    }
-    else if (step == "3")
-    {
-        val["cmd"] = "file_end";
-    }
-    thread_write_data(b, val);
 }
 
 void ChatThread::thread_client_offline(struct bufferevent *bev, const Json::Value &v)
@@ -1076,4 +1193,187 @@ void ChatThread::thread_query_users_by_uids_batch(struct bufferevent *bev, const
 void ChatThread::thread_eventcb_list_delete(struct bufferevent *bev)
 {
     info->list_delete_user_by_bev(bev);
+}
+
+void ChatThread::init_file_storage()
+{
+    // 创建文件存储目录
+    std::filesystem::create_directories(FILE_STORAGE_PATH);
+}
+
+std::string ChatThread::thread_save_file(const std::string& file_id, const std::string& file_data)
+{
+    // Base64解码
+    std::string decoded = base64_decode(file_data);
+
+    // 构建文件路径
+    std::string file_path = std::string(FILE_STORAGE_PATH) + "/" + file_id + ".png";
+
+    // 写入文件
+    std::ofstream out(file_path, std::ios::binary);
+    if (out.write(decoded.data(), decoded.size())) {
+        return file_path;
+    }
+
+    return "";
+}
+
+void ChatThread::thread_send_chunked(struct bufferevent* bev, const std::string& file_id,
+                                      const std::string& base64_data, const std::string& base_cmd,
+                                      const Json::Value& extra_fields)
+{
+    size_t total_size = base64_data.size();
+    size_t total_chunks = (total_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+    std::cout << "[Chunked] Sending " << total_chunks << " chunks for file_id: " << file_id
+              << ", total_size: " << total_size << std::endl;
+
+    for (size_t i = 0; i < total_chunks; i++) {
+        size_t offset = i * CHUNK_SIZE;
+        size_t chunk_len = std::min((size_t)CHUNK_SIZE, total_size - offset);
+
+        Json::Value chunk;
+        chunk["cmd"] = base_cmd + "_chunk";
+        chunk["file_id"] = file_id;
+        chunk["chunk_index"] = (int)i;
+        chunk["total_chunks"] = (int)total_chunks;
+        chunk["file_size"] = (int)total_size;
+        chunk["chunk_data"] = base64_data.substr(offset, chunk_len);
+
+        // 添加额外字段
+        for (const auto& key : extra_fields.getMemberNames()) {
+            chunk[key] = extra_fields[key];
+        }
+
+        thread_write_data(bev, chunk);
+    }
+}
+
+void ChatThread::thread_image_private_chat(struct bufferevent *bev, const Json::Value &v)
+{
+    uint64_t userUid = v["uid"].asUInt64();
+    uint64_t friendUid = v["tofriend"].asUInt64();
+    std::string fileId = v["file_id"].asString();
+    std::string fileData = v["file_data"].asString();
+
+    // 保存图片到服务器
+    std::string filePath = thread_save_file(fileId, fileData);
+
+    if (filePath.empty()) {
+        // 保存失败，发送错误消息
+        Json::Value errorVal;
+        errorVal["cmd"] = "image_private_reply";
+        errorVal["result"] = "save_failed";
+        if (v.isMember("request_id"))
+            errorVal["request_id"] = v["request_id"];
+        thread_write_data(bev, errorVal);
+        return;
+    }
+
+    // 查找好友是否在线
+    struct bufferevent *friendBev = info->list_friend_online(std::to_string(friendUid));
+    Json::Value val;
+    if (v.isMember("request_id"))
+        val["request_id"] = v["request_id"];
+
+    // 好友不在线
+    if (friendBev == NULL)
+    {
+        val["cmd"] = "image_private_reply";
+        val["result"] = "offline";
+        thread_write_data(bev, val);
+        return;
+    }
+
+    // 好友在线，使用分块发送图片消息
+    Json::Value extra_fields;
+    extra_fields["fromfriend"] = Json::Value::UInt64(userUid);
+    thread_send_chunked(friendBev, fileId, fileData, "image_private", extra_fields);
+
+    // 回复发送者成功
+    val.clear();
+    val["cmd"] = "image_private_reply";
+    val["result"] = "success";
+    if (v.isMember("request_id"))
+        val["request_id"] = v["request_id"];
+    thread_write_data(bev, val);
+}
+
+void ChatThread::thread_image_group_chat(struct bufferevent *bev, const Json::Value &v)
+{
+    uint64_t gid = v["gid"].asUInt64();
+    uint64_t uid = v["uid"].asUInt64();
+    std::string fileId = v["file_id"].asString();
+    std::string fileData = v["file_data"].asString();
+
+    // 保存图片到服务器
+    std::string filePath = thread_save_file(fileId, fileData);
+
+    if (filePath.empty()) {
+        // 保存失败，发送错误消息
+        Json::Value errorVal;
+        errorVal["cmd"] = "image_group_reply";
+        errorVal["result"] = "save_failed";
+        if (v.isMember("request_id"))
+            errorVal["request_id"] = v["request_id"];
+        thread_write_data(bev, errorVal);
+        return;
+    }
+
+    // 获取发送者用户名
+    if (!db->database_connect())
+    {
+        LOG_ERROR("database_connect");
+        return;
+    }
+
+    std::string username = db->database_get_username_by_uid(uid);
+    db->database_disconnect();
+
+    if (username.empty())
+    {
+        LOG_ERROR("username not found for uid");
+        return;
+    }
+
+    // 获取群组名称
+    if (!db->database_connect())
+    {
+        LOG_ERROR("database_connect");
+        return;
+    }
+
+    std::string groupname = db->database_get_groupname_by_gid(gid);
+    db->database_disconnect();
+
+    // 获取成员列表并发送图片消息
+    std::list<std::string> member = info->list_get_list_by_gid(gid);
+    for (auto it = member.begin(); it != member.end(); it++)
+    {
+        // 不发送给自己
+        if (*it == std::to_string(uid))
+            continue;
+
+        struct bufferevent *memberBev = info->list_friend_online(*it);
+        if (memberBev == NULL)
+            continue;
+
+        Json::Value val;
+        val["cmd"] = "image_group";
+        val["gid"] = Json::Value::UInt64(gid);
+        val["groupname"] = groupname;
+        val["from_uid"] = Json::Value::UInt64(uid);
+        val["from_username"] = username;
+        val["file_id"] = fileId;
+        val["file_data"] = fileData;  // 转发Base64编码的图片数据
+        thread_write_data(memberBev, val);
+    }
+
+    // 回复发送者成功
+    Json::Value replyVal;
+    replyVal["cmd"] = "image_group_reply";
+    replyVal["result"] = "success";
+    if (v.isMember("request_id"))
+        replyVal["request_id"] = v["request_id"];
+    thread_write_data(bev, replyVal);
 }

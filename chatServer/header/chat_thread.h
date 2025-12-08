@@ -8,8 +8,12 @@
 #include <memory>
 #include <jsoncpp/json/json.h>
 #include "event_utils.h"
+#include <fstream>
+#include <sys/stat.h>
 
-#define MAX_PACKET_SIZE 1024*1024 //数据包最大大小：10MB
+#define MAX_PACKET_SIZE 1024*1024*10 //数据包最大大小：10MB
+#define FILE_STORAGE_PATH "./file_storage" //文件存储目录
+#define CHUNK_SIZE 32768  // 分块大小：32KB
 
 class ChatThread
 {
@@ -157,6 +161,45 @@ private:
      * @param v 文件消息
     */
     void thread_transer_file(struct bufferevent* bev,const Json::Value& v);
+
+    /**
+     * @brief 处理图片私聊消息
+     * @param bev 发出请求的客户端事件
+     * @param v 图片消息数据
+     */
+    void thread_image_private_chat(struct bufferevent* bev, const Json::Value& v);
+
+    /**
+     * @brief 处理图片群聊消息
+     * @param bev 发出请求的客户端事件
+     * @param v 图片消息数据
+     */
+    void thread_image_group_chat(struct bufferevent* bev, const Json::Value& v);
+
+    /**
+     * @brief 保存文件到服务器存储目录
+     * @param file_id 文件ID
+     * @param file_data Base64编码的文件数据
+     * @return 保存成功返回文件路径，失败返回空字符串
+     */
+    std::string thread_save_file(const std::string& file_id, const std::string& file_data);
+
+    /**
+     * @brief 分块发送大数据
+     * @param bev 目标客户端事件
+     * @param file_id 文件唯一标识
+     * @param base64_data Base64编码的数据
+     * @param base_cmd 基础命令（如image_private，会自动添加_chunk后缀）
+     * @param extra_fields 额外的JSON字段
+     */
+    void thread_send_chunked(struct bufferevent* bev, const std::string& file_id,
+                             const std::string& base64_data, const std::string& base_cmd,
+                             const Json::Value& extra_fields);
+
+    /**
+     * @brief 初始化文件存储目录
+     */
+    static void init_file_storage();
 
     /**
      * @brief 处理客户端下线事件
