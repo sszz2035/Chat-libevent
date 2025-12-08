@@ -3,8 +3,9 @@
 
 #include <QJsonObject>
 #include <QObject>
+#include <QAbstractSocket>
 #include <QTcpSocket>
-#include<QTimer>
+#include <QTimer>
 // #include<core/dataquery.h>
 #include"page-view/registerpage.h"
 #include "core/clientrequesthandler.h"

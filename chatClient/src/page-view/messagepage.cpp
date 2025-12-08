@@ -1,7 +1,3 @@
-//
-// Created by FU-QAQ on 2024/12/11.
-//
-
 #include "page-view/MessagePage.h"
 #include "conversationpage.h"
 
@@ -23,6 +19,7 @@
 #include"utils/get-time/GetCurTime.h"
 #include <core/clientrequesthandler.h>
 #include "page-view/archpage.h"
+#include "core/database/dbcachehelper.h"
 MessagePage * MessagePage::_messagePage = nullptr;
 static std::mutex m;
 
@@ -59,35 +56,19 @@ bool MessagePage::loadCacheMsg(QList<MessageContentData> caches)
             // UserBaseInfoData userBaseInfo;
             //采用智能指针,解决异步回调问题
             std::shared_ptr<UserBaseInfoData>userBaseInfo(new UserBaseInfoData);
-            if (it.senderSSID == CommonData::getInstance()->getCurUserInfo().ssid) {
-                // userBaseInfo = g_pCommonData->getUserInfoBySSID(it.recipient.recipientSSID);
-                //可以通过tmpusermsg容器优化
-                    ClientRequestHandler::getInstance()->queryUserInfoByUid(it.recipient.recipientSSID,[isGroup,this,userBaseInfo,it](const QJsonObject& obj){
-                        userBaseInfo->ssid=obj["uid"].toInt();
-                        userBaseInfo->username=obj["username"].toString();
-                        userBaseInfo->avatarPath=":/include/Image/Cirno.jpg";
-                        addMsgCard({
-                            *(userBaseInfo.get()),{},{},
-                            it.content,it.createTime,isGroup
-                        });
-                        addMsgContent(it);
-                    });
-            }
-            else
-            {
-                // find recipient base info
-                // userBaseInfo = g_pCommonData->getUserInfoBySSID(it.senderSSID);
-                ClientRequestHandler::getInstance()->queryUserInfoByUid(it.senderSSID,[isGroup,this,userBaseInfo,it](const QJsonObject& obj){
-                    userBaseInfo->ssid=obj["uid"].toInt();
-                    userBaseInfo->username=obj["username"].toString();
-                    userBaseInfo->avatarPath=":/include/Image/Cirno.jpg";
-                    addMsgCard({
-                        *(userBaseInfo.get()),{},{},
-                        it.content,it.createTime,isGroup
-                    });
-                    addMsgContent(it);
+            qint32 targetSSID = (it.senderSSID == CommonData::getInstance()->getCurUserInfo().ssid)
+                                ? it.recipient.recipientSSID
+                                : it.senderSSID;
+
+            // 优化：使用DbCacheHelper缓存
+            DbCacheHelper::instance().getUserInfo(targetSSID, [isGroup,this,userBaseInfo,it,targetSSID](const UserBaseInfoData& userInfo) {
+                *userBaseInfo = userInfo;
+                addMsgCard({
+                    *(userBaseInfo.get()),{},{},
+                    it.content,it.createTime,isGroup
                 });
-            }
+                addMsgContent(it);
+            });
 
             if (userBaseInfo->ssid)
             {
@@ -101,45 +82,16 @@ bool MessagePage::loadCacheMsg(QList<MessageContentData> caches)
             }
         }
     else {
-        // get group ssid base info
-                ClientRequestHandler::getInstance()->queryGroupInfoByGid(it.recipient.recipientSSID,[this,it,isGroup](const QJsonObject& obj){
-                GroupBaseInfoData   gBaseInfo;
-                QList<GroupMemberInfoData> gMemberInfos;
-                    qint32 gid =obj["gid"].toInt();
-                    gBaseInfo.ssidGroup=gid;
-                    gBaseInfo.groupName=obj["groupname"].toString();
-                    gBaseInfo.createSSID=obj["groupowner"].toInt();
+        qint32 groupID = it.recipient.recipientSSID;
 
-                    QString groList=obj["groupmember"].toString();
-                    QStringList groupList = groList.split('|', Qt::SkipEmptyParts);
-                    for(const QString member:groupList)
-                    {
-                        GroupMemberInfoData data;
-                        data.ssidGroup=gid;
-                        data.ssidMember=member.toInt();
-                        gMemberInfos.append(data);
-                    }
-
-                    if (gBaseInfo.ssidGroup!=-1) {
-                        addMsgCard({
-                            {},gBaseInfo,gMemberInfos,
-                            it.content,it.createTime,isGroup
-                        });
-                        addMsgContent(it);
-                    }
-                    else {
-                    //     // LOG_WARNING("not find the ssid : " << it.recipient.recipientSSID << " , then ask for the data to the server database!");
-                    //     //             addMsgCard({
-                    //     //                 {},{"","NULL",":/message-page/rc-page/img/SS-default-icon-flat.jpg","","",{},
-                    //     //                  GetCurTime::getTimeObj()->getCurTimeStamp()},{},
-                    //     //                 it.content,it.createTime,isGroup
-                    //     //             });
-                    //     //             return false;
-                    }
-
-                }
-                                                                 );
-
+        // 优化：使用DbCacheHelper缓存
+        DbCacheHelper::instance().getGroupInfo(groupID, [this,it,isGroup](const GroupBaseInfoData& gBaseInfo, const QList<GroupMemberInfoData>& gMemberInfos) {
+            addMsgCard({
+                {},gBaseInfo,gMemberInfos,
+                it.content,it.createTime,isGroup
+            });
+            addMsgContent(it);
+        });
 
 
         }
@@ -165,7 +117,6 @@ void MessagePage::addMsgContent(const MessageContentData &content) {
         _ssidLinkCardHash[content.recipient.recipientSSID]->setTimeContent(QString::fromStdString(
                                                                                GetCurTime::getTimeObj()->getMsgTypeTime(content.createTime)),Qt::gray,font);
 
-        // update conversation data
         if (isGroup) {
             // _ssidLinkCardHash[content.recipient.recipientSSID]->setSubTitle(ComFunc::truncateWithEllipsis(_curName + "：" +  docu.toPlainText()));
             _ssidLinkCardHash[content.recipient.recipientSSID]->setSubTitle(_curName + "：" +  docu.toPlainText());
@@ -188,7 +139,6 @@ void MessagePage::addMsgContent(const MessageContentData &content) {
                                                                   GetCurTime::getTimeObj()->getMsgTypeTime(content.createTime)),Qt::gray,font);
         // _ssidLinkCardHash[content.senderSSID]->setSubTitle(docu.toPlainText());
 
-        // update conversation data
         if (isGroup) {
             auto typeWid = dynamic_cast<ConversationGroupPage*>(_cardLinkPageHash[_ssidLinkCardHash[content.recipient.recipientSSID]]->getConversationTypePage());
             // auto userInfo = CommonData::getInstance()->getUserInfoBySSID(content.senderSSID);
@@ -196,10 +146,11 @@ void MessagePage::addMsgContent(const MessageContentData &content) {
 
             // _ssidLinkCardHash[content.senderSSID]->setSubTitle(ComFunc::truncateWithEllipsis(userInfo.username + "：" + docu.toPlainText()));
             // _ssidLinkCardHash[content.senderSSID]->setSubTitle(userInfo.username + "：" + docu.toPlainText());
-            //要改 用sqlite数据库优化
-            ClientRequestHandler::getInstance()->queryUserInfoByUid(content.senderSSID,[content,typeWid](const QJsonObject& obj){
-                QString username=obj["username"].toString();
-                typeWid->insertMsgBubble({QString::number(content.senderSSID),username,content.content,":/include/Image/Cirno.jpg",false});
+            qint32 senderSSID = content.senderSSID;
+
+            // 优化：使用DbCacheHelper缓存
+            DbCacheHelper::instance().getUserInfo(senderSSID, [content,typeWid,senderSSID](const UserBaseInfoData& userInfo) {
+                typeWid->insertMsgBubble({QString::number(senderSSID),userInfo.username,content.content,userInfo.avatarPath,false});
             });
         }
         else {
@@ -323,7 +274,7 @@ MessagePage::MessagePage(QWidget *parent) : QWidget(parent) {
     initConnectFunc();
 
     MessageContentData content;
-    content.content="我爱你";
+    content.content="我";
     content.contentType=ContentType::Text;
     content.createTime=1;
     content.senderSSID=2035797167;
@@ -332,7 +283,7 @@ MessagePage::MessagePage(QWidget *parent) : QWidget(parent) {
     loadCacheMsg({content});
 
     MessageContentData content2;
-    content2.content="你爱我吗";
+    content2.content="你";
     content2.contentType=ContentType::Text;
     content2.createTime=1;
     content2.senderSSID=2035797167;
@@ -341,8 +292,8 @@ MessagePage::MessagePage(QWidget *parent) : QWidget(parent) {
     loadCacheMsg({content2});
 
     MsgCombineData data;
-    data.content="擦";
-    data.groupBaseInfo.groupName="所说咋咋2035的小群";
+    data.content="123";
+    data.groupBaseInfo.groupName="所说咋咋的小群";
     data.groupBaseInfo.ssidGroup=15136256;
     data.groupBaseInfo.createSSID=2035797167;
     GroupMemberInfoData dd;

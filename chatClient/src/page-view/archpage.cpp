@@ -29,6 +29,7 @@
 
 #include "effect-component/ssmaskwidget.h"
 #include "effect-component/loadingdialog.h"
+#include "core/database/dbcachehelper.h"
 
 static std::mutex m;
 ArchPage * ArchPage::_obj = nullptr;
@@ -76,20 +77,20 @@ void ArchPage::destroyInstance() {
             friendData.friendSSID=friendssid;
             friendData.friendType=1;
             friendData.groupingName="我的好友";//默认分组
-            
+
             // 使用值捕获和索引来安全地更新数据
             int index = cache.size();
             cache.push_back(friendData);
             pendingCallbacks++;
-            
-            ClientRequestHandler::getInstance()->queryUserInfoByUid(friendssid, [this, index](const QJsonObject& obj)
-            {
+
+            // 优化：使用DbCacheHelper缓存
+            DbCacheHelper::instance().getUserInfo(friendssid, [this, index, friendssid](const UserBaseInfoData& userInfo) {
                 if (index >= 0 && index < cache.size()) {
-                    // 安全地更新缓存中的数据
-                    cache[index].friendName = obj["username"].toString();
-                    cache[index].status = obj["status"].toString();
+                    // 使用缓存数据
+                    cache[index].friendName = userInfo.username;
+                    cache[index].status = "在线"; // 默认状态
                 }
-                
+
                 pendingCallbacks--;
                 if (pendingCallbacks == 0) {
                     // 所有回调都完成了，发出信号
@@ -113,17 +114,18 @@ void ArchPage::destroyInstance() {
             groupData.friendSSID=groupssid;
             groupData.friendType=2;
             groupData.groupingName="我加入的群聊";
+
             // 使用值捕获和索引来安全地更新数据
             int index = cache.size();
             cache.push_back(groupData);
             pendingCallbacks++;
 
-            ClientRequestHandler::getInstance()->queryGroupInfoByGid(groupssid,[this, index](const QJsonObject &obj)
-            {
+            // 优化：使用DbCacheHelper缓存
+            DbCacheHelper::instance().getGroupInfo(groupssid, [this, index, groupssid](const GroupBaseInfoData& groupInfo, const QList<GroupMemberInfoData>& members) {
                 if (index >= 0 && index < cache.size()) {
-                    // 安全地更新缓存中的数据
-                    cache[index].friendName = obj["groupname"].toString();
-                    cache[index].status=obj["groupmember"].toString();
+                    // 使用缓存数据
+                    cache[index].friendName = groupInfo.groupName;
+                    cache[index].status = "群聊";
                 }
                 pendingCallbacks--;
                 if (pendingCallbacks == 0) {

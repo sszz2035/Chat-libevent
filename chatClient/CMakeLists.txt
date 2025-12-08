@@ -59,14 +59,11 @@ qt_add_executable(chatclient
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Network)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Sql)
 
 #添加子目录
 add_subdirectory(src/page-view/llm-page)
+add_subdirectory(src/core/database)
 
 # 链接库
 target_link_libraries(chatclient
@@ -76,6 +73,7 @@ target_link_libraries(chatclient
         ${CMAKE_CURRENT_SOURCE_DIR}/lib/ElaWidgetToolsd.lib
 )
 target_link_libraries(chatclient PRIVATE LLMChatPagePlugin)
+target_link_libraries(chatclient PRIVATE DatabaseLib)
 target_link_libraries(chatclient PRIVATE Qt6::Widgets)
 target_link_libraries(chatclient PRIVATE Qt6::Core Qt6::Network)
 target_link_libraries(chatclient PRIVATE Qt6::Core)
@@ -90,6 +88,8 @@ include_directories(
     include
     include/private
     src
+    src/core
+    src/core/database
 )
 install(TARGETS chatclient
     BUNDLE  DESTINATION .

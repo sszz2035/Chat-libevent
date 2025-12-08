@@ -70,6 +70,7 @@ private:
     QHash<qint32,ElaInteractiveCard*>           _ssidLinkCardHash;//用户id对应卡片容器
     QHash<qint32,int>                           _tabSSIDLinkIndex;//用户id对应导航栏序号
     // --------------- BackEnd --------------
+
     static MessagePage* _messagePage;
 };
 
