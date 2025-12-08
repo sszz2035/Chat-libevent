@@ -49,6 +49,8 @@ qt_add_executable(chatclient
     src/utils/get-time/GetCurTime.cpp
     src/utils/get-time/GetCurTime.h
     src/core/commondata.h src/core/commondata.cpp
+    src/utils/common-func/CommonFunc.h
+    src/utils/common-func/CommonFunc.cpp
 )
 
 #添加资源文件
@@ -75,7 +77,7 @@ target_link_libraries(chatclient
 target_link_libraries(chatclient PRIVATE LLMChatPagePlugin)
 target_link_libraries(chatclient PRIVATE DatabaseLib)
 target_link_libraries(chatclient PRIVATE Qt6::Widgets)
-target_link_libraries(chatclient PRIVATE Qt6::Core Qt6::Network)
+target_link_libraries(chatclient PRIVATE Qt6::Core Qt6::Network Qt6::Sql)
 target_link_libraries(chatclient PRIVATE Qt6::Core)
 target_link_libraries(chatclient PRIVATE Qt6::Widgets)
 target_link_libraries(chatclient PRIVATE Qt6::Core)
@@ -83,7 +85,7 @@ target_link_libraries(chatclient PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)
 
-include_directories(${Qt6Core_INCLUDE_DIRS} ${Qt6Network_INCLUDE_DIRS})
+include_directories(${Qt6Core_INCLUDE_DIRS} ${Qt6Network_INCLUDE_DIRS} ${Qt6Sql_INCLUDE_DIRS})
 include_directories(
     include
     include/private

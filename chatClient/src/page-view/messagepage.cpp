@@ -408,6 +408,7 @@ void MessagePage::initConnectFunc() {
         //添加消息卡片
         addMsgCard(clickContent);
         //点击消息卡片
-        emit sigClickedSSIDCardRequest(clickContent.userBaseInfo.ssid);
+        qint32 ssid = clickContent.isGroup ? clickContent.groupBaseInfo.ssidGroup : clickContent.userBaseInfo.ssid;
+        emit sigClickedSSIDCardRequest(ssid);
     });
 }
