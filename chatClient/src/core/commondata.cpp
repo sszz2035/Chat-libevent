@@ -1,5 +1,9 @@
 #include "commondata.h"
 #include<mutex>
+#include <QStandardPaths>
+#include <QDir>
+#include <QCoreApplication>
+
 CommonData* CommonData::instance=nullptr;
 static std::mutex m;
 CommonData *CommonData::getInstance()
@@ -47,10 +51,33 @@ bool CommonData::setMessageContentData(const QList<MessageContentData> &data, bo
         emit sigMsgContentData(data);
         return true;
     }
+    return false;
 }
 
+QString CommonData::getMsgPicTempPath() const
+{
+    return _msgPicTempPath;
+}
 
-CommonData::CommonData() {}
+bool CommonData::saveImageToTemp(const QString& imageName, const QImage& image)
+{
+    QString filePath = getImageTempFilePath(imageName);
+    return image.save(filePath, "PNG");
+}
+
+QString CommonData::getImageTempFilePath(const QString& imageName) const
+{
+    return _msgPicTempPath + "/" + imageName + ".png";
+}
+
+CommonData::CommonData() {
+    // 初始化图片临时目录
+    _msgPicTempPath = QCoreApplication::applicationDirPath() + "/temp/msgpic";
+    QDir dir(_msgPicTempPath);
+    if (!dir.exists()) {
+        dir.mkpath(_msgPicTempPath);
+    }
+}
 
 CommonData::~CommonData()
 {

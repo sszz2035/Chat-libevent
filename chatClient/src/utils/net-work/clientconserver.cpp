@@ -37,59 +37,60 @@ ClientConServer::~ClientConServer()
     socket=nullptr;
 }
 
-void ClientConServer::client_receive_data(QByteArray &ba)
+bool ClientConServer::client_receive_data(QByteArray &ba)
 {
-    int size=0,sum=0;
-    bool flag=true;
-    char buf[4096]={0};
-    
+    int size=0;
+    char buf[4]={0};
+
     // 检查是否有足够的数据可读
     if (socket->bytesAvailable() < 4) {
-        SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Not enough data available for size header");
-        return;
+        return false;  // 数据不足，等待更多数据
     }
-    
-    qint64 bytesRead = socket->peek(buf,4);
-    if (bytesRead != 4) {
-        SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Failed to read size header, read " + QString::number(bytesRead) + " bytes");
-        return;
-    }
-    
-    memcpy(&size,buf,4);
-    if(socket->bytesAvailable()<size+4) { return;}
-    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Expecting data size: " + QString::number(size) + " bytes, available: " + QString::number(socket->bytesAvailable()) + " bytes");
-    
-    if ( size <= 0) {
-        SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Invalid data size: " + QString::number(size));
-        return;
-    }
-    
-    socket->read(buf,4);
 
-    while(flag)
-    {
-        memset(buf,0,sizeof(buf));
-        int toRead = qMin(size - sum, (int)sizeof(buf));
-        bytesRead = socket->read(buf, toRead);
-        if (bytesRead <= 0) {
-            SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Failed to read data, read " + QString::number(bytesRead) + " bytes");
-            break;
-        }
-        sum += bytesRead;
-        ba.append(buf, bytesRead);
-        if(sum >= size)   flag=false;
+    qint64 bytesRead = socket->peek(buf, 4);
+    if (bytesRead != 4) {
+        SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Failed to peek size header");
+        return false;
     }
-    
-    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Received complete data: " + QString::number(ba.size()) + " bytes, data: " + ba);
+
+    memcpy(&size, buf, 4);
+
+    // 检查数据是否完整到达
+    if (socket->bytesAvailable() < size + 4) {
+        SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__,
+            "Waiting for more data, need: " + QString::number(size + 4) + ", available: " + QString::number(socket->bytesAvailable()));
+        return false;  // 数据不完整，等待更多数据
+    }
+
+    if (size <= 0 || size > 10 * 1024 * 1024) {  // 最大10MB
+        SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Invalid data size: " + QString::number(size));
+        socket->read(4);  // 跳过错误的头部
+        return false;
+    }
+
+    // 读取并丢弃4字节长度头
+    socket->read(4);
+
+    // 一次性读取所有数据
+    ba = socket->read(size);
+
+    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Received complete data: " + QString::number(ba.size()) + " bytes");
+    return true;
 }
 
 void ClientConServer::readyReadHandler()
 {
     SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "readyRead triggered, bytes available: " + QString::number(socket->bytesAvailable()));
-    
-    // 循环处理所有可用的数据包
+
+    // 循环处理所有可用的完整数据包
     while (socket->bytesAvailable() >= 4) {
-        ClientRequestHandler::getInstance()->client_reply_info();
+        QByteArray ba;
+        if (!client_receive_data(ba)) {
+            break;  // 数据不完整，跳出循环等待下次readyRead
+        }
+        if (!ba.isEmpty()) {
+            ClientRequestHandler::getInstance()->client_reply_info(ba);
+        }
     }
 }
 
@@ -150,23 +151,27 @@ void ClientConServer::clinet_write_data(QJsonObject &obj)
         SSLog::log(SSLog::LogLevel::SS_WARNING, QString(__FILE__), __LINE__, "Socket not connected, current state: " + QString::number(socket->state()));
         return;
     }
-    
+
     QJsonDocument doc(obj);
     QByteArray sendData=doc.toJson();
     int size=sendData.size();
     sendData.insert(0,(char*)&size,4);
-    
+
+    // 打印发送的cmd和request_id
+    QString cmd = obj.contains("cmd") ? obj["cmd"].toString() : "unknown";
+    QString reqId = obj.contains("request_id") ? obj["request_id"].toString() : "none";
+    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__,
+        "Sending cmd: " + cmd + ", request_id: " + reqId + ", size: " + QString::number(size) + " bytes");
+
     // 确保数据完全发送
     qint64 bytesWritten = socket->write(sendData);
     if (bytesWritten == -1) {
         SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Failed to write data: " + socket->errorString());
         return;
     }
-    
+
     // 等待数据发送完成
     socket->flush();
-    
-    SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__, "Sent data: " + obj["cmd"].toString() + " size: " + QString::number(bytesWritten) + " bytes");
 }
 
 QTcpSocket *ClientConServer::getClientSocket()

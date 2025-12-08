@@ -20,7 +20,8 @@ public:
     static void destroyInstance();
     void connectToServer();
     void clinet_write_data(QJsonObject& obj);
-    void client_receive_data(QByteArray& ba);
+    // 返回值：true=成功读取完整包，false=数据不足需等待
+    bool client_receive_data(QByteArray& ba);
     QTcpSocket* getClientSocket();
 private:
     explicit ClientConServer();

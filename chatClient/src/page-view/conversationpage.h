@@ -36,6 +36,8 @@ public:
 
     QMap<QString, QImage>& getImageTmpMap();
     void setSendMsgStrategy(bool isEnterToSendMsg);
+    // insert logic default scale is 0.3
+    void insertImage(const QImage &image, double scale = 0.3);
 protected:
     // image from paste board
     void insertFromMimeData(const QMimeData *source) override;
@@ -46,9 +48,6 @@ protected:
 
     // backspace event
     void keyPressEvent(QKeyEvent *event) override;
-
-    // insert logic default scale is 0.3
-    void insertImage(const QImage &image, double scale = 0.3);
 private:
     QMap<QString, QImage>   _imagesTmpMap;    // pic name without suffix : pic pixmap
     bool                    _isEnterToSendMsg     =   true;
@@ -62,6 +61,8 @@ public:
     ~InputWidget() override;
 signals:
     void sigSendBtnClicked(const QString& inputHtml);
+    void sigFileBtnClicked(const QString& filePath);
+    void sigImageDataReady(const QString& imageName, const QByteArray& imageData);
 protected:
     void initConnectFunc();
     void initWindow();

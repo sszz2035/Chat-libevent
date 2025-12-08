@@ -1,6 +1,3 @@
-//
-// Created by FU-QAQ on 2024/12/12.
-//
 #include "conversationpage.h"
 #include"effect-component/msg-bubble/msgbubblemodel.h"
 #include"effect-component/msg-bubble/msgbubbledelegate.h"
@@ -15,8 +12,6 @@
 #include "userpage.h"
 #include "messagepage.h"
 #include "define.h"
-// #include "help.h"
-// #include "uuid/GenUUID.h"  随机id
 #include "ElaToolButton.h"
 #include "ElaDockWidget.h"
 #include "ElaPushButton.h"
@@ -39,8 +34,109 @@
 #include <QTimer>
 #include <mutex>
 #include <QJsonArray>
+#include <QFileDialog>
+#include <QStandardPaths>
+#include <QDir>
+#include <QUuid>
+#include <QBuffer>
+#include <QCoreApplication>
 
 #include <core/clientrequesthandler.h>
+#include "utils/log/logfile.h"
+
+// 文件类型检测辅助函数
+QString detectFileExtension(const QByteArray& fileData, const QString& originalFileName) {
+    // 首先尝试从原始文件名提取扩展名
+    if (originalFileName.contains('.')) {
+        QString ext = originalFileName.mid(originalFileName.lastIndexOf('.'));
+        if (!ext.isEmpty()) {
+            return ext;
+        }
+    }
+
+    // 如果没有扩展名，根据文件头（魔数）检测类型
+    if (fileData.size() < 4) {
+        return "";
+    }
+
+    // 读取前几个字节作为魔数
+    quint32 magic = 0;
+    if (fileData.size() >= 4) {
+        magic = (quint8)fileData[0] << 24 | (quint8)fileData[1] << 16 |
+                (quint8)fileData[2] << 8 | (quint8)fileData[3];
+    }
+
+    // PDF: %PDF
+    if (fileData.startsWith("%PDF")) {
+        return ".pdf";
+    }
+    // ZIP: PK
+    if (fileData.startsWith("PK\x03\x04") || fileData.startsWith("PK\x05\x06") || fileData.startsWith("PK\x07\x08")) {
+        return ".zip";
+    }
+    // RAR: Rar!
+    if (fileData.startsWith("Rar!")) {
+        return ".rar";
+    }
+    // 7Z: 7z
+    if (fileData.startsWith("7z")) {
+        return ".7z";
+    }
+    // GIF: GIF87a or GIF89a
+    if (fileData.startsWith("GIF87a") || fileData.startsWith("GIF89a")) {
+        return ".gif";
+    }
+    // PNG: \x89PNG
+    if (fileData.startsWith("\x89PNG")) {
+        return ".png";
+    }
+    // JPEG: FF D8 FF
+    if (fileData.size() >= 3 && (quint8)fileData[0] == 0xFF && (quint8)fileData[1] == 0xD8 && (quint8)fileData[2] == 0xFF) {
+        return ".jpg";
+    }
+    // BMP: BM
+    if (fileData.startsWith("BM")) {
+        return ".bmp";
+    }
+    // TIFF: II* or MM*
+    if (fileData.startsWith("II*\x00") || fileData.startsWith("MM\x00*")) {
+        return ".tiff";
+    }
+    // MP3: ID3 or FFB
+    if (fileData.startsWith("ID3") || ((quint8)fileData[0] == 0xFF && ((quint8)fileData[1] & 0xF0) == 0xF0)) {
+        return ".mp3";
+    }
+    // MP4: ftyp
+    if (fileData.size() >= 4 && fileData[4] == 'f' && fileData[5] == 't' && fileData[6] == 'y' && fileData[7] == 'p') {
+        return ".mp4";
+    }
+    // AVI: RIFF....AVI
+    if (fileData.startsWith("RIFF") && fileData.size() >= 12 && fileData[8] == 'A' && fileData[9] == 'V' && fileData[10] == 'I') {
+        return ".avi";
+    }
+    // WAVE: RIFF....WAVE
+    if (fileData.startsWith("RIFF") && fileData.size() >= 12 && fileData[8] == 'W' && fileData[9] == 'A' && fileData[10] == 'V' && fileData[11] == 'E') {
+        return ".wav";
+    }
+    // EXE: MZ
+    if (fileData.startsWith("MZ")) {
+        return ".exe";
+    }
+    // DLL: PE
+    if (fileData.size() >= 2 && (quint8)fileData[0] == 'P' && (quint8)fileData[1] == 'E') {
+        return ".dll";
+    }
+    // DOC: D0CF11E0
+    if (fileData.size() >= 4 && (quint8)fileData[0] == 0xD0 && (quint8)fileData[1] == 0xCF && (quint8)fileData[2] == 0x11 && (quint8)fileData[3] == 0xE0) {
+        return ".doc";
+    }
+    // TXT: UTF-8 BOM or plain text
+    if (fileData.startsWith("\xEF\xBB\xBF") || fileData.startsWith("{\rtf")) {
+        return ".txt";
+    }
+
+    return "";
+}
 
 SSTextEdit::SSTextEdit(QWidget *parent): QTextEdit(parent) {
     setAcceptDrops(true);
@@ -121,8 +217,8 @@ void SSTextEdit::insertImage(const QImage &image, double scale) {
     int width = static_cast<int>(image.width() * scale);
     int height = static_cast<int>(image.height() * scale);
 
-    // QString imageName = QString::fromStdString(g_pGenUUID->generateUUID("msg_pic"));
-    QString imageName="6";
+    // 生成唯一图片名称
+    QString imageName = "img_" + QUuid::createUuid().toString(QUuid::WithoutBraces).left(8);
     document->addResource(QTextDocument::ImageResource, QUrl(imageName), QVariant(image));
 
     QTextImageFormat imageFormat;
@@ -243,6 +339,37 @@ void InputWidget::initConnectFunc() {
     connect(_screenCutButton, &ElaPushButton::clicked, this, [=]() {
         ScreenshotPage *screenshotWidget = new ScreenshotPage();
         screenshotWidget->show();
+    });
+
+    // 图片选择按钮
+    connect(_picButton, &ElaToolButton::clicked, this, [=]() {
+        QStringList fileNames = QFileDialog::getOpenFileNames(
+            this,
+            "选择图片",
+            QStandardPaths::writableLocation(QStandardPaths::PicturesLocation),
+            "图片文件 (*.png *.jpg *.jpeg *.bmp *.gif)"
+        );
+        for (const QString& fileName : fileNames) {
+            QImage image(fileName);
+            if (!image.isNull()) {
+                _inputEditFrame->insertImage(image);
+            }
+        }
+        _inputEditFrame->setFocus();
+    });
+
+    // 文件选择按钮
+    connect(_fileButton, &ElaToolButton::clicked, this, [=]() {
+        QString fileName = QFileDialog::getOpenFileName(
+            this,
+            "选择文件",
+            QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation),
+            "所有文件 (*.*)"
+        );
+        if (!fileName.isEmpty()) {
+            // 发送文件信号
+            emit sigFileBtnClicked(fileName);
+        }
     });
 
     connect(_sendButton, &QPushButton::clicked, this, [=]() {
@@ -578,21 +705,89 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
         _layout->addWidget(_cfP);
         _layout->addWidget(_inputWid);
 
+        // handle file button click
+        connect(_inputWid, &InputWidget::sigFileBtnClicked, this, [=](const QString& filePath) {
+            QFile file(filePath);
+            if (!file.open(QIODevice::ReadOnly)) {
+                SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Failed to open file: " + filePath);
+                return;
+            }
+
+            QByteArray fileData = file.readAll();
+            file.close();
+
+            // Detect file extension
+            QString fileExt = detectFileExtension(fileData, filePath);
+            if (fileExt.isEmpty()) {
+                fileExt = ".bin";  // Default extension for unknown files
+            }
+
+            // Generate unique file ID with extension
+            QString fileId = "file_" + QUuid::createUuid().toString(QUuid::WithoutBraces).left(8) + fileExt;
+            QByteArray base64Data = fileData.toBase64();
+
+            // Create file message
+            qint64 curTimeStamp = GetCurTime::getTimeObj()->getCurTimeStamp();
+            MessageContentData msgDto{
+                _curSSID,
+                ContentType::File,  // Use File type for non-image files
+                filePath.split('/').last(),  // Use filename as content
+                {fileId},  // fileId field (now with extension)
+                {
+                    1,
+                    dto.userBaseInfo.ssid
+                },
+                curTimeStamp
+            };
+
+            SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__,
+                QString("Detected file type: %1 for file %2").arg(fileExt).arg(filePath));
+
+            // Display in UI
+            _cfP->insertMsgBubble({QString::number(_curSSID), _curName,
+                                   "[文件: " + filePath.split('/').last() + "]", CommonData::getInstance()->getCurUserInfo().avatarPath, true});
+
+            // Update card
+            MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
+            msgPage->_ssidLinkCardHash[dto.userBaseInfo.ssid]->setTimeContent(
+                QString::fromStdString(GetCurTime::getTimeObj()->getMsgTypeTime(curTimeStamp)),
+                Qt::gray, QFont());
+            msgPage->_ssidLinkCardHash[dto.userBaseInfo.ssid]->setSubTitle("[文件: " + filePath.split('/').last() + "]");
+
+            // Save file to project file_storage directory
+            QString storageDir = QCoreApplication::applicationDirPath() + "/file_storage";
+            QDir dir;
+            if (!dir.exists(storageDir)) {
+                dir.mkpath(storageDir);
+            }
+            QString fullFilePath = storageDir + "/" + fileId;
+            QFile outFile(fullFilePath);
+            if (outFile.open(QIODevice::WriteOnly)) {
+                outFile.write(fileData);
+                outFile.close();
+            }
+
+            CommonData::getInstance()->setMessageContentData({msgDto});
+        });
+
         // send msg by myself
         connect(_inputWid, &InputWidget::sigSendBtnClicked, this, [=](const QString& html) {
             QString html_cp = html;
-         // add msg pic to the tmp
+            // add msg pic to the tmp
             QMap<QString,QImage>& cacheImage = _inputWid->_inputEditFrame->getImageTmpMap();
             QList<QString> fileIDs;
-            // if (!_inputWid->_inputEditFrame->getImageTmpMap().isEmpty()) {
-            //     for (auto imageIt = cacheImage.begin(); imageIt != cacheImage.end(); imageIt++) {
-            //         std::string imageName = imageIt.key().toStdString();
-            //         g_pCommonData->addMsgPicToTmp(imageIt.value(),imageName);// store in the tmp dir
-            //         html_cp.replace(imageIt.key(),QString::fromStdString(g_pCommonData->getDataPath(msgPic) + "/" + imageName + g_pCommonData->getImageEx()));
-            //         fileIDs.append(imageIt.key());
-            //     }
-            //     cacheImage.clear();
-            // }
+            if (!cacheImage.isEmpty()) {
+                for (auto imageIt = cacheImage.begin(); imageIt != cacheImage.end(); imageIt++) {
+                    QString imageName = imageIt.key();
+                    // 保存图片到临时目录
+                    CommonData::getInstance()->saveImageToTemp(imageName, imageIt.value());
+                    QString localPath = CommonData::getInstance()->getImageTempFilePath(imageName);
+                    // 替换html中的图片引用为本地路径
+                    html_cp.replace(imageName, localPath);
+                    fileIDs.append(imageName);
+                }
+                cacheImage.clear();
+            }
             _inputWid->_inputEditFrame->clear();
 
             _cfP->insertMsgBubble({QString::number(_curSSID),_curName,
@@ -600,11 +795,12 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
 
             // store msg
             qint64 curTimeStamp = GetCurTime::getTimeObj()->getCurTimeStamp();
+            ContentType msgType = fileIDs.isEmpty() ? ContentType::Text : ContentType::Image;
             MessageContentData msgDto{
                 _curSSID,
-                ContentType::Text,
+                msgType,
                 html_cp,
-                fileIDs,
+                fileIDs,  // fileId字段（单数）
                 {
                     1,
                     dto.userBaseInfo.ssid
@@ -615,12 +811,13 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
             // get grandfather to link card and set content display
             MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
 
-            // replace image url to [图片] placeholders
-            // QRegularExpression imgRegex("<img[^>]*>", QRegularExpression::CaseInsensitiveOption);
-            // html_cp.replace(imgRegex,"[图片]");
+            // replace image url to [图片] placeholders for card subtitle
+            QString cardText = html_cp;
+            QRegularExpression imgRegex("<img[^>]*>", QRegularExpression::CaseInsensitiveOption);
+            cardText.replace(imgRegex,"[图片]");
             QFont font;
             QTextDocument docu;
-            docu.setHtml(html_cp);
+            docu.setHtml(cardText);
             font.setPointSize(9);
 
             msgPage->_ssidLinkCardHash[dto.userBaseInfo.ssid]->setTimeContent(QString::fromStdString(
@@ -707,31 +904,33 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
         _layout->addWidget(_cgP);
         _layout->addItem(listAndInputLayout);
 
-        connect(_inputWid, &InputWidget::sigSendBtnClicked, this, [=](const QString& html) {
-            QString html_cp = html;
-//             // add msg pic to the tmp
-            QList<QString> fileIds;
-//             QMap<QString,QImage>& cacheImage = _inputWid->_inputEditFrame->getImageTmpMap();
-//             if (!_inputWid->_inputEditFrame->getImageTmpMap().isEmpty()) {
-//                 for (auto imageIt = cacheImage.begin(); imageIt != cacheImage.end(); imageIt++) {
-//                     std::string imageName = imageIt.key().toStdString();
-//                     g_pCommonData->addMsgPicToTmp(imageIt.value(),imageName);
-//                     html_cp.replace(imageIt.key(),QString::fromStdString(g_pCommonData->getDataPath(msgPic) + "/" + imageName + g_pCommonData->getImageEx()));
-//                     fileIds.append(imageIt.key());
-//                 }
-//                 cacheImage.clear();
-//             }
-            _inputWid->_inputEditFrame->clear();
-            _cgP->insertMsgBubble({QString::number(_curSSID),_curName,
-                                   html_cp,CommonData::getInstance()->getCurUserInfo().avatarPath,true});
+        // handle file button click for group
+        connect(_inputWid, &InputWidget::sigFileBtnClicked, this, [=](const QString& filePath) {
+            QFile file(filePath);
+            if (!file.open(QIODevice::ReadOnly)) {
+                SSLog::log(SSLog::LogLevel::SS_ERROR, QString(__FILE__), __LINE__, "Failed to open file: " + filePath);
+                return;
+            }
 
-//             // store msg
+            QByteArray fileData = file.readAll();
+            file.close();
+
+            // Detect file extension
+            QString fileExt = detectFileExtension(fileData, filePath);
+            if (fileExt.isEmpty()) {
+                fileExt = ".bin";  // Default extension for unknown files
+            }
+
+            // Generate unique file ID with extension
+            QString fileId = "file_" + QUuid::createUuid().toString(QUuid::WithoutBraces).left(8) + fileExt;
+
+            // Create file message
             qint64 curTimeStamp = GetCurTime::getTimeObj()->getCurTimeStamp();
             MessageContentData msgDto{
                 _curSSID,
-                ContentType::Text,
-                html_cp,
-                fileIds,
+                ContentType::File,  // Use File type for non-image files
+                filePath.split('/').last(),  // Use filename as content
+                {fileId},  // fileId field (now with extension)
                 {
                     2,
                     dto.groupBaseInfo.ssidGroup
@@ -739,22 +938,90 @@ ConversationPage::ConversationPage(ConversationType type,const MsgCombineData& d
                 curTimeStamp
             };
 
-//             // get grandfather to link card and set content display
+            SSLog::log(SSLog::LogLevel::SS_INFO, QString(__FILE__), __LINE__,
+                QString("Detected file type: %1 for file %2").arg(fileExt).arg(filePath));
+
+            // Display in UI
+            _cgP->insertMsgBubble({QString::number(_curSSID), _curName,
+                                   "[文件: " + filePath.split('/').last() + "]", CommonData::getInstance()->getCurUserInfo().avatarPath, true});
+
+            // Update card
+            MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
+            msgPage->_ssidLinkCardHash[dto.groupBaseInfo.ssidGroup]->setTimeContent(
+                QString::fromStdString(GetCurTime::getTimeObj()->getMsgTypeTime(curTimeStamp)),
+                Qt::gray, QFont());
+            msgPage->_ssidLinkCardHash[dto.groupBaseInfo.ssidGroup]->setSubTitle("[文件: " + filePath.split('/').last() + "]");
+
+            // Save file to project file_storage directory
+            QString storageDir = QCoreApplication::applicationDirPath() + "/file_storage";
+            QDir dir;
+            if (!dir.exists(storageDir)) {
+                dir.mkpath(storageDir);
+            }
+            QString fullFilePath = storageDir + "/" + fileId;
+            QFile outFile(fullFilePath);
+            if (outFile.open(QIODevice::WriteOnly)) {
+                outFile.write(fileData);
+                outFile.close();
+            }
+
+            // Send to server
+            CommonData::getInstance()->setMessageContentData({msgDto});
+        });
+
+        connect(_inputWid, &InputWidget::sigSendBtnClicked, this, [=](const QString& html) {
+            QString html_cp = html;
+            // add msg pic to the tmp
+            QMap<QString,QImage>& cacheImage = _inputWid->_inputEditFrame->getImageTmpMap();
+            QList<QString> fileIds;
+            if (!cacheImage.isEmpty()) {
+                for (auto imageIt = cacheImage.begin(); imageIt != cacheImage.end(); imageIt++) {
+                    QString imageName = imageIt.key();
+                    // 保存图片到临时目录
+                    CommonData::getInstance()->saveImageToTemp(imageName, imageIt.value());
+                    QString localPath = CommonData::getInstance()->getImageTempFilePath(imageName);
+                    // 替换html中的图片引用为本地路径
+                    html_cp.replace(imageName, localPath);
+                    fileIds.append(imageName);
+                }
+                cacheImage.clear();
+            }
+            _inputWid->_inputEditFrame->clear();
+            _cgP->insertMsgBubble({QString::number(_curSSID),_curName,
+                                   html_cp,CommonData::getInstance()->getCurUserInfo().avatarPath,true});
+
+            // store msg
+            qint64 curTimeStamp = GetCurTime::getTimeObj()->getCurTimeStamp();
+            ContentType msgType = fileIds.isEmpty() ? ContentType::Text : ContentType::Image;
+            MessageContentData msgDto{
+                _curSSID,
+                msgType,
+                html_cp,
+                fileIds,  // fileId字段（单数）
+                {
+                    2,
+                    dto.groupBaseInfo.ssidGroup
+                },
+                curTimeStamp
+            };
+
+            // get grandfather to link card and set content display
             MessagePage * msgPage = dynamic_cast<MessagePage*>(parent->parent());
 
-//             // replace image url to [图片] placeholders
-//             QRegularExpression imgRegex("<img[^>]*>", QRegularExpression::CaseInsensitiveOption);
-//             html_cp.replace(imgRegex,"[图片]");
+            // replace image url to [图片] placeholders for card subtitle
+            QString cardText = html_cp;
+            QRegularExpression imgRegex("<img[^>]*>", QRegularExpression::CaseInsensitiveOption);
+            cardText.replace(imgRegex,"[图片]");
             QFont font;
             QTextDocument docu;
-            docu.setHtml(html_cp);
+            docu.setHtml(cardText);
             font.setPointSize(9);
             msgPage->_ssidLinkCardHash[dto.groupBaseInfo.ssidGroup]->setTimeContent(QString::fromStdString(
                                                                                         GetCurTime::getTimeObj()->getMsgTypeTime(curTimeStamp)),
                                                                                     Qt::gray,font);
             msgPage->_ssidLinkCardHash[dto.groupBaseInfo.ssidGroup]->setSubTitle(docu.toPlainText());
 
-//             // sync with server
+            // sync with server
             CommonData::getInstance()->setMessageContentData({msgDto});
         });
     }
