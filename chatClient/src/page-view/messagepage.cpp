@@ -200,11 +200,27 @@ void MessagePage::addMsgCard(const MsgCombineData &info) {
                 _unreadMsgCount[info.userBaseInfo.ssid] = 0;
                 user->changeStatus(true);
                 user->show();
+
+                // 确保ConversationPage对象仍然有效
+                if (!cP) return;
+
                 cP->scrollMsgViewToBottom();
 
+                // 检查标签页是否已存在
                 if (_tabSSIDLinkIndex.contains(info.userBaseInfo.ssid)) {
-                    _conversionWid->setCurrentIndex(_tabSSIDLinkIndex.value(info.userBaseInfo.ssid));
-                }else {
+                    int tabIndex = _tabSSIDLinkIndex.value(info.userBaseInfo.ssid);
+                    // 验证该索引仍然有效
+                    if (tabIndex >= 0 && tabIndex < _conversionWid->count() &&
+                        _conversionWid->widget(tabIndex) == _cardLinkPageHash[user]) {
+                        _conversionWid->setCurrentIndex(tabIndex);
+                    } else {
+                        // 索引无效，需要创建新标签页
+                        _tabSSIDLinkIndex.remove(info.userBaseInfo.ssid);
+                        int idx = _conversionWid->addTab(_cardLinkPageHash[user],QPixmap(avatarPath),info.userBaseInfo.username);
+                        _tabSSIDLinkIndex.insert(info.userBaseInfo.ssid,idx);
+                        _conversionWid->setCurrentIndex(idx);
+                    }
+                } else {
                     int idx = _conversionWid->addTab(_cardLinkPageHash[user],QPixmap(avatarPath),info.userBaseInfo.username);
                     _tabSSIDLinkIndex.insert(info.userBaseInfo.ssid,idx);
                     _conversionWid->setCurrentIndex(idx);
@@ -242,12 +258,29 @@ void MessagePage::addMsgCard(const MsgCombineData &info) {
                 _unreadMsgCount[info.groupBaseInfo.ssidGroup] = 0;
                 user->changeStatus(true);
                 user->show();
+
+                // 确保ConversationPage对象仍然有效
+                if (!cP) return;
+
                 cP->scrollMsgViewToBottom();
-                if (_tabSSIDLinkIndex.contains(info.userBaseInfo.ssid)) {
-                    _conversionWid->setCurrentIndex(_tabSSIDLinkIndex.value(info.userBaseInfo.ssid));
-                }else {
+
+                // 检查标签页是否已存在
+                if (_tabSSIDLinkIndex.contains(info.groupBaseInfo.ssidGroup)) {
+                    int tabIndex = _tabSSIDLinkIndex.value(info.groupBaseInfo.ssidGroup);
+                    // 验证该索引仍然有效
+                    if (tabIndex >= 0 && tabIndex < _conversionWid->count() &&
+                        _conversionWid->widget(tabIndex) == _cardLinkPageHash[user]) {
+                        _conversionWid->setCurrentIndex(tabIndex);
+                    } else {
+                        // 索引无效，需要创建新标签页
+                        _tabSSIDLinkIndex.remove(info.groupBaseInfo.ssidGroup);
+                        int idx = _conversionWid->addTab(_cardLinkPageHash[user],QPixmap(avatarPath),info.groupBaseInfo.groupName);
+                        _tabSSIDLinkIndex.insert(info.groupBaseInfo.ssidGroup,idx);
+                        _conversionWid->setCurrentIndex(idx);
+                    }
+                } else {
                     int idx = _conversionWid->addTab(_cardLinkPageHash[user],QPixmap(avatarPath),info.groupBaseInfo.groupName);
-                    _tabSSIDLinkIndex.insert(info.userBaseInfo.ssid,idx);
+                    _tabSSIDLinkIndex.insert(info.groupBaseInfo.ssidGroup,idx);
                     _conversionWid->setCurrentIndex(idx);
                 }
             });
@@ -348,6 +381,32 @@ void MessagePage::initContent() {
 }
 
 void MessagePage::initConnectFunc() {
+    // 启用标签页关闭功能
+    _conversionWid->setTabsClosable(true);
+
+    // 监听标签页关闭请求
+    connect(_conversionWid, &QTabWidget::tabCloseRequested, this, [this](int index) {
+        // 获取该标签页对应的Widget
+        QWidget* widget = _conversionWid->widget(index);
+        if (!widget) return;
+
+        // 遍历查找对应的SSID和卡片
+        for (auto it = _cardLinkPageHash.begin(); it != _cardLinkPageHash.end(); ++it) {
+            if (it.value() == widget) {
+                ElaInteractiveCard* card = it.key();
+                MsgCombineData info = _tmpUserMsgList.value(card);
+                qint32 ssid = info.isGroup ? info.groupBaseInfo.ssidGroup : info.userBaseInfo.ssid;
+
+                // 清理所有相关映射
+                _tabSSIDLinkIndex.remove(ssid);
+                break;
+            }
+        }
+
+        // 关闭标签页（但不删除Widget）
+        _conversionWid->removeTab(index);
+    });
+
     //从数据库中读取消息缓存 然后添加到_tmpUserMsgList 然后再给这里面初始化
     for (auto it = _tmpUserMsgList.begin(); it != _tmpUserMsgList.end(); it++) {
         if (!it.value().isGroup) {
@@ -358,17 +417,36 @@ void MessagePage::initConnectFunc() {
                 _unreadMsgCount[it.value().userBaseInfo.ssid] = 0;
                 it.key()->changeStatus(true);
                 it.key()->show();
+
+                // 确保ConversationPage对象仍然有效
+                if (!cP) return;
+
                 cP->scrollMsgViewToBottom();
 
+                // 检查标签页是否已存在
                 if (_tabSSIDLinkIndex.contains(it.value().userBaseInfo.ssid)) {
-                    _conversionWid->setCurrentIndex(_tabSSIDLinkIndex.value(it.value().userBaseInfo.ssid));
-                }else {
+                    int tabIndex = _tabSSIDLinkIndex.value(it.value().userBaseInfo.ssid);
+                    // 验证该索引仍然有效
+                    if (tabIndex >= 0 && tabIndex < _conversionWid->count() &&
+                        _conversionWid->widget(tabIndex) == _cardLinkPageHash[it.key()]) {
+                        _conversionWid->setCurrentIndex(tabIndex);
+                    } else {
+                        // 索引无效，需要创建新标签页
+                        _tabSSIDLinkIndex.remove(it.value().userBaseInfo.ssid);
+                        int idx = _conversionWid->addTab(
+                            _cardLinkPageHash[it.key()],
+                            it.key()->getCardPixmap(),
+                            it.key()->getTitle()
+                            );
+                        _tabSSIDLinkIndex.insert(it.value().userBaseInfo.ssid,idx);
+                        _conversionWid->setCurrentIndex(idx);
+                    }
+                } else {
                     int idx = _conversionWid->addTab(
                         _cardLinkPageHash[it.key()],
                         it.key()->getCardPixmap(),
                         it.key()->getTitle()
                         );
-
                     _tabSSIDLinkIndex.insert(it.value().userBaseInfo.ssid,idx);
                     _conversionWid->setCurrentIndex(idx);
                 }
@@ -381,17 +459,37 @@ void MessagePage::initConnectFunc() {
                 _unreadMsgCount[it.value().groupBaseInfo.ssidGroup] = 0;
                 it.key()->changeStatus(true);
                 it.key()->show();
+
+                // 确保ConversationPage对象仍然有效
+                if (!cP) return;
+
                 cP->scrollMsgViewToBottom();
 
-                if (_tabSSIDLinkIndex.contains(it.value().userBaseInfo.ssid)) {
-                    _conversionWid->setCurrentIndex(_tabSSIDLinkIndex.value(it.value().userBaseInfo.ssid));
-                }else {
+                // 检查标签页是否已存在
+                if (_tabSSIDLinkIndex.contains(it.value().groupBaseInfo.ssidGroup)) {
+                    int tabIndex = _tabSSIDLinkIndex.value(it.value().groupBaseInfo.ssidGroup);
+                    // 验证该索引仍然有效
+                    if (tabIndex >= 0 && tabIndex < _conversionWid->count() &&
+                        _conversionWid->widget(tabIndex) == _cardLinkPageHash[it.key()]) {
+                        _conversionWid->setCurrentIndex(tabIndex);
+                    } else {
+                        // 索引无效，需要创建新标签页
+                        _tabSSIDLinkIndex.remove(it.value().groupBaseInfo.ssidGroup);
+                        int idx = _conversionWid->addTab(
+                            _cardLinkPageHash[it.key()],
+                            it.key()->getCardPixmap(),
+                            it.key()->getTitle()
+                            );
+                        _tabSSIDLinkIndex.insert(it.value().groupBaseInfo.ssidGroup,idx);
+                        _conversionWid->setCurrentIndex(idx);
+                    }
+                } else {
                     int idx = _conversionWid->addTab(
                         _cardLinkPageHash[it.key()],
                         it.key()->getCardPixmap(),
                         it.key()->getTitle()
                         );
-                    _tabSSIDLinkIndex.insert(it.value().userBaseInfo.ssid,idx);
+                    _tabSSIDLinkIndex.insert(it.value().groupBaseInfo.ssidGroup,idx);
                     _conversionWid->setCurrentIndex(idx);
                 }
             });

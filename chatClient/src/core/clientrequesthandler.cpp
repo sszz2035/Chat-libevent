@@ -3,10 +3,10 @@
 #include<QRandomGenerator>
 #include<QDateTime>
 #include <QJsonArray>
-#include <QFile>  // 添加QFile头文件
-#include <QThread>  // 添加QThread支持
+#include <QFile>
+#include <QThread>
 #include <QFutureWatcher>
-#include <QtConcurrent/QtConcurrent>  // 添加QtConcurrent支持异步处理
+#include <QtConcurrent/QtConcurrent>
 #include "core/commondata.h"
 #include "page-view/contactpage.h"
 #include"page-view/messagepage.h"
@@ -14,7 +14,6 @@
 #include"page-view/archpage.h"
 static std::mutex m;
 
-// 分块缓存 - 在类外部定义以避免模板问题
 QMap<QString, QMap<int, QString>> ClientRequestHandler::m_fileChunks;
 QMap<QString, int> ClientRequestHandler::m_fileTotalChunks;
 std::mutex ClientRequestHandler::m_chunksMutex;

@@ -54,7 +54,7 @@ QString detectFileExtension(const QByteArray& fileData, const QString& originalF
         }
     }
 
-    // 如果没有扩展名，根据文件头（魔数）检测类型
+    // 如果没有扩展名，根据文件头检测类型
     if (fileData.size() < 4) {
         return "";
     }
@@ -453,7 +453,7 @@ void ConversationFriendPage::initWindow() {
 }
 
 void ConversationFriendPage::initEdgeLayout() {
-    // toolbar layout
+
     _toolLayout->addWidget(_userNameButton);
     _toolLayout->addStretch();
     _toolLayout->addWidget(_videoButton);
@@ -461,20 +461,17 @@ void ConversationFriendPage::initEdgeLayout() {
     _toolLayout->addWidget(_moreOptionButton);
     _toolLayout->setContentsMargins(10,0,0,0);
 
-    // toolbar wid to set style
     auto * _toolWid = new QWidget(this);
     _toolWid->setContentsMargins(0,10,0,20);
     _toolWid->setObjectName("_toolWid");
     _toolWid->setLayout(_toolLayout);
     _toolWid->setStyleSheet("#_toolWid {border: none; background-color: rgb(242, 242, 242);border-top-right-radius: 30px;}");
 
-    // set msglist size
     _msgListView->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::MinimumExpanding);
     _msgListView->setMinimumWidth(500);
     _msgListView->setMaximumHeight(1000);
     _msgListView->setMinimumHeight(300);
 
-    // main layout for toolbar and msglist
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0,0,0,0);
     mainLayout->setSpacing(0);
@@ -485,7 +482,6 @@ void ConversationFriendPage::initEdgeLayout() {
     this->setContentsMargins(0,0,0,0);
 }
 void ConversationFriendPage::initContent() {
-    // tool button settings
     _userNameButton->setText(_userInfo.username);
     _userNameButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
     _videoButton->setElaIcon(ElaIconType::CircleVideo);
@@ -497,7 +493,7 @@ void ConversationFriendPage::initContent() {
     _moreOptionButton->setElaIcon(ElaIconType::CircleEllipsis);
     _moreOptionButton->setIconSize(QSize(32,32));
     _moreOptionButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    // view setting
+
     _msgListView->setObjectName("_msgListView");
     _msgListView->setLayoutMode(QListView::Batched);
     _msgListView->setResizeMode(QListView::Adjust);

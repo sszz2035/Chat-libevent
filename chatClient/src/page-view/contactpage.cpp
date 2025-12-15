@@ -165,8 +165,11 @@ void ContactPage::addContactInfo(const QString& groupingName,const MsgCombineDat
         _groupModel->addGroupingItem(groupingName,{
                                                        QString::number(info.groupBaseInfo.ssidGroup),info.groupBaseInfo.groupName,info.content,avatarPath
                                                    });
-        _groupingInfos["group"][groupingName].append(info);
-        _ssidToCardInfoHash[QString::number(info.groupBaseInfo.ssidGroup)] = info;
+        // 创建非const副本以设置isGroup标志
+        MsgCombineData groupInfo = info;
+        groupInfo.isGroup = true;
+        _groupingInfos["group"][groupingName].append(groupInfo);
+        _ssidToCardInfoHash[QString::number(info.groupBaseInfo.ssidGroup)] = groupInfo;
     }
 }
 
@@ -311,11 +314,14 @@ void ContactPage::initConnectFunc() {
         }
     });
     connect(_groupTree,&QTreeView::doubleClicked,[=](const QModelIndex &index) {
-        if (index.parent().isValid()) {
-            QString clickedSSID = index.data(ContactDelegate::SSIDRole).toString();
-            if (clickedSSID.isEmpty()) return;
-            emit sigTriggerAddMsgCard(_ssidToCardInfoHash.value(clickedSSID));
+        if (!index.parent().isValid()) {
+            return;
         }
+
+        QString clickedSSID = index.data(ContactDelegate::SSIDRole).toString();
+        if (clickedSSID.isEmpty()) return;
+        if (!_ssidToCardInfoHash.contains(clickedSSID)) return;
+        emit sigTriggerAddMsgCard(_ssidToCardInfoHash.value(clickedSSID));
     });
 
     connect(_noticePage,&NoticePage::sigHideArchPageMaskEffect,this,&ContactPage::sigHideArchPageMaskEffect);
